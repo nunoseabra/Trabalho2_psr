@@ -54,9 +54,14 @@ def main():
         mask = cv2.inRange(hsv, lower_bound, upper_bound)
  
         # Atualiza as janelas OpenCV
-        cv2.imshow('Original Image', cv2.flip(frame,1))
-        cv2.imshow('Color Mask', cv2.flip(mask,1))
+            
+        # Updates OpenCv frame window
+        frame_sized=cv2.resize(frame,(600,400))
+        cv2.imshow('Original Image', cv2.flip(frame_sized,1))
 
+        # Updates OpenCv mask window
+        mask_sized=cv2.resize(mask,(600,400))
+        cv2.imshow('Color Mask', cv2.flip(mask_sized,1))  
         key = cv2.waitKey(1)
         if key == ord('w'):
             # Salva os limites em um arquivo JSON

@@ -66,6 +66,19 @@ def trackbars(frame):
     
     return color_data, hsv, min_b, min_g, min_r, max_b, max_g, max_r
 
+# Reading all minimum values
+def getMin(dict):
+    i = 1
+    min = dict[i]['min']
+    return min
+        
+# Calling all previous minimum values
+def getPrevMin(dict):
+    i = 1
+    prevmin = dict[i]['prev_min']
+    return prevmin
+        
+
 # Function to update window
 def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
         
@@ -91,7 +104,7 @@ def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
 
 # Function to save color limits data in a JSON file
 def savefile(min_b, min_g, min_r, max_b, max_g, max_r):
-
+    key = cv2.waitKey(1)
     if key == ord('w'):     # If 'w' pressed gets limit dictionary
         limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 'G': {'min': min_g, 'max': max_g}, 'R': {'min': min_r, 'max': max_r}}}
         
@@ -107,26 +120,17 @@ def main():
     # Open window function
     openwin()
 
-    color_data, hsv, min_b, min_g, min_r, max_b, max_g, max_r = trackbars(frame)
+    
 
     while True:
         # If a frame is not captured the code breaks
         ret, frame = cap.read()
+
+        color_data, hsv, min_b, min_g, min_r, max_b, max_g, max_r = trackbars(frame)
+
         if not ret:
           break
 
-        # Reading all minimum values
-        def getMin(dict):
-           i = 1
-           min = dict[i]['min']
-           return min
-        
-        # Calling all previous minimum values
-        def getPrevMin(dict):
-           i = 1
-           prevmin = dict[i]['prev_min']
-           return prevmin
-        
         # Comparing minimum values to previous minimum values
         if getMin(color_data) != getPrevMin(color_data):        # If limits change prints warning message with new parameters
                 print('The color ' + str(color_data[i]['color']) + ' minimum changed to: '+ str(color_data[i]['min']))
@@ -134,7 +138,7 @@ def main():
         # Updates window                  
         updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r)
 
-        key = cv2.waitKey(1)
+        
 
         # Visiualization function
         if key == ord('q'):            # when 'q' pressed quits program
