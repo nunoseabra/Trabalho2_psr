@@ -5,7 +5,7 @@
 # Trabalho nº2 - Augmented Reality Paint
 
 # Maria Rodrigues, nº 102384
-# Nuno Seabra, nº
+# Nuno Seabra, nº 102889
 # Ricardo Baptista, nº
 
 
