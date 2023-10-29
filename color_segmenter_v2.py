@@ -59,33 +59,59 @@ def trackbars(frame):
     min_r = cv2.getTrackbarPos('Rmin', 'Color Mask')
     max_r = cv2.getTrackbarPos('Rmax', 'Color Mask')
 
-    color_data = [
-            {'color':'Blue', 'min': min_b, 'prev_min': prev_minb},
-            {'color':'Red', 'min': min_r, 'prev_min': prev_minr},
-            {'color':'Green', 'min': min_g, 'prev_min': prev_ming}]
+    color_data = {"color":
+            {'Blue':
+            {'min': min_b, 'prev_min': prev_minb,'max': max_b, 'prev_max': prev_maxb},
+            'Red':
+            {'min': min_r, 'prev_min': prev_minr,'max': max_r, 'prev_max': prev_maxr},
+            'Green': 
+            {'min': min_g, 'prev_min': prev_ming,'max': max_g, 'prev_max': prev_maxg}
+            }}
+
     
     return color_data, hsv, min_b, min_g, min_r, max_b, max_g, max_r
 
-# Reading all minimum values
-def getMin(dict):
-    i = 1
-    min = dict[i]['min']
-    return min
-        
-# Calling all previous minimum values
-def getPrevMin(dict):
-    i = 1
-    prevmin = dict[i]['prev_min']
-    return prevmin
-        
+#Function to print selected vallues on track bars
+def selectPrint(color_data):
+    min_b=color_data['color']['Blue']['min']
+    min_r=color_data['color']['Red']['min']
+    min_g=color_data['color']['Green']['min']
+
+    max_b=color_data['color']['Blue']['max']
+    max_r=color_data['color']['Red']['max']
+    max_g=color_data['color']['Green']['max']
+
+    prev_minb=color_data['color']['Blue']['prev_min']
+    prev_minr=color_data['color']['Red']['prev_min']
+    prev_ming=color_data['color']['Green']['prev_min']
+
+    prev_maxb=color_data['color']['Blue']['prev_max']
+    prev_maxr=color_data['color']['Red']['prev_max']
+    prev_maxg=color_data['color']['Green']['prev_max']
+    
+
+
+    if   min_b != prev_minb:
+        print('Selected Threshold ' + str(min_b) + ' for limit Bmin')
+    elif min_g != prev_ming:
+        print('Selected Threshold ' + str(min_g) + ' for limit Gmin')
+    elif min_r != prev_minr:
+        print('Selected Threshold ' + str(min_r) + ' for limit Rmin')
+    elif max_b != prev_maxb:
+        print('Selected Threshold ' + str(max_b) + ' for limit Bmax')
+    elif max_g != prev_maxg:
+        print('Selected Threshold ' + str(max_g) + ' for limit Gmax')
+    elif max_r != prev_maxr:
+        print('Selected Threshold ' + str(max_r) + ' for limit Rmax')
+
 
 # Function to update window
 def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
         
-    color_data[0]['prev_min']=min_b
-    color_data[1]['prev_min']=min_r
-    color_data[2]['prev_min']=min_g
-
+    color_data['color']['Blue']['prev_min']= min_b
+    color_data['color']['Red']['prev_min']= min_r
+    color_data['color']['Green']['prev_min']= min_g
+ 
     # Defines color limits based on trackbars
     lower_bound = (min_b, min_g, min_r)
     upper_bound = (max_b, max_g, max_r)
@@ -101,6 +127,7 @@ def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
     mask_sized=cv2.resize(mask,(600,400))
     cv2.imshow('Color Mask', cv2.flip(mask_sized,1))    
 
+    return color_data
 
 # Function to save color limits data in a JSON file
 def savefile(min_b, min_g, min_r, max_b, max_g, max_r):
@@ -130,17 +157,18 @@ def main():
 
         if not ret:
           break
-
+        
         # Comparing minimum values to previous minimum values
-        if getMin(color_data) != getPrevMin(color_data):        # If limits change prints warning message with new parameters
-                print('The color ' + str(color_data[i]['color']) + ' minimum changed to: '+ str(color_data[i]['min']))
-
+        #selectPrint(color_data) nao funciona
+        
+        
         # Updates window                  
-        updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r)
+        color_data=updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r)
 
         
 
         # Visiualization function
+        key=cv2.waitKey(1)
         if key == ord('q'):            # when 'q' pressed quits program
             print('Interrupted.....')
             break
