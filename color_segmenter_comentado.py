@@ -187,11 +187,14 @@ def main():
 
         # Visiualization function
         key=cv2.waitKey(1)
-        if key == ord('q'):            # when 'q' pressed quits program
-            print('Interrupted.....')
-            break
-        else:
+        if key == ord('w'):            # when 'q' pressed quits program
             savefile(min_b, min_g, min_r, max_b, max_g, max_r)
+            print('\n Limits Saved.....\n ')
+            break
+        elif key == ord('d'): 
+            print('\n Interrupted.....\n ')
+            break
+        
 
 
 #--------- MAIN CODE  ---------#

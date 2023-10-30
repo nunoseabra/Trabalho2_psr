@@ -72,13 +72,13 @@ def draw_shape(event,x,y,flags, param):
                 cv2.imshow("Drawing1", image_copy)
             
             elif mode == 'ellipse':
-                image_copy =image.copy()
+                image_copy =screen.copy()
                 # Calcule o tamanho da elipse
                 a = abs(x - start_point[0])
                 b = abs(y - start_point[1])
                 # Desenhe a elipse
                 cv2.ellipse(image_copy, start_point, (a, b), 0, 0, 360, pencil_color, 2)
-                cv2.imshow("F3", image_copy)
+                cv2.imshow("Drawing1", image_copy)
 
     # Button no longer pressed - program ends and defines the radious based on end point
     elif event == cv2.EVENT_LBUTTONUP:
@@ -91,6 +91,12 @@ def draw_shape(event,x,y,flags, param):
 
         elif mode == 'rectangle':               # Ends rectangle mode
             cv2.rectangle(screen, start_point, end_point, pencil_color, 2)
+        
+        elif mode == 'ellipse':
+            #image_copy = image.copy()
+            a = abs(end_point[0] - start_point[0])
+            b = abs(end_point[1] - start_point[1])
+            cv2.ellipse(screen, start_point, (a, b), 0, 0, 360, pencil_color, 2)
 
 
 #--------- MAIN FUNCTION ---------#
@@ -99,9 +105,9 @@ def main():
 
     # Argparse description and arguments
     parser = argparse.ArgumentParser(description='Definition of test mode')
-    parser.add_argument('-j', '--json', type=str, required=True, help='Full path to json file.')
-    parser.add_argument('--use_shake_prevention', action='store_true', help='Enable shake prevention')
-    parser.add_argument('--use_mouse', action='store_true', help='Use mouse position for drawing')
+    parser.add_argument('-j', '--json', type=str, required=False, default='limits.json', help='provide the path to the .json file with the color data')
+    parser.add_argument('-usp','--use_shake_prevention', action='store_true', help='Enable shake prevention')
+    parser.add_argument('-um','--use_mouse', action='store_true', help='Use mouse position for drawing')
     args = parser.parse_args()
 
     print('\n ' + 'Ready to Draw ...'+ '\n')
@@ -111,7 +117,7 @@ def main():
         limits=json.load(file)
 
     # Calling global variables
-    global mode, pencil_color, screen
+    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid
     
     if args.use_mouse: #If the user chooses to use mouse to test
         pygame.init()
@@ -182,16 +188,16 @@ def main():
 
             if distance > shake_threshold:
                 # If shake is detected, draw a single point
-                cv2.circle(screen, pencil_color, pencil_size, centroid)
+                cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
             else:
                 # Draw a line between the previous and current centroids
-                cv2.line(screen, pencil_color, pencil_size, prev_centroid, centroid)
+                cv2.line(screen,centroid, pencil_size, pencil_color, -1)
         else:
             # Draw a point 
-            cv2.circle(screen, pencil_color, pencil_size, centroid)
+            cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
 
         prev_centroid = centroid
-        cv2.imshow('Drawing 3', screen)
+        cv2.imshow('Drawing1', screen)
 
         # Shows initial frame
         #frame_sized=cv2.resize(frame,(600,400))
@@ -204,7 +210,7 @@ def main():
 
         # Shows blank canvas
         cv2.imshow('Drawing1',screen)
-        cv2.imshow('Drawing2', picture)
+        #cv2.imshow('Drawing2', picture)
 
         # If a key is pressed, reads key
         key=cv2.waitKey(1)
@@ -243,7 +249,7 @@ def main():
 
         elif key == ord('c'):
             # Clears screen and opens new canvas when 'c' pressed
-            picture = np.full((480, 640, 3),255, dtype=np.uint8)
+            screen = np.full((480, 640, 3),255, dtype=np.uint8)
             print( Fore.YELLOW + 'New canvas\n'+ Style.RESET_ALL)
 
         elif key == ord('w'):
