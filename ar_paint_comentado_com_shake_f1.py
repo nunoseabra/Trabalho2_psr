@@ -38,6 +38,7 @@ end_point = (0, 0)
 prev_centroid = (0,0)
 centroid = (0,0)
 mouse_pos = (0,0)
+o = 0
 
 # Defines initial variables for color (red), pencil size and drawing mode
 pencil_color = (0, 0, 255)
@@ -54,17 +55,18 @@ screen = np.zeros((512, 512, 3), dtype=np.uint8)
 # Function to draw shapes in the canva
 def draw_shape(event,x,y,flags, param):
     # Calling global variables
-    global mode,drawing,start_point,end_point,screen, drawing
+    global mode,drawing,start_point,end_point,screen, drawing,o
 
     # The function starts when the button is pressed
     if event == cv2.EVENT_LBUTTONDOWN and drawing:
                                 # Drawing flag turns true
         start_point = (x, y)
         
-    elif event == cv2.EVENT_MOUSEMOVE:          # If the mouse moves while pressed
+    elif event == cv2.EVENT_MOUSEMOVE :          # If the mouse moves while pressed
         if drawing:
             if mode == 'circle':                # Circle mode
                 image_copy =screen.copy()
+                
                 radius = int(np.sqrt((x - start_point[0]) ** 2 + (y - start_point[1]) ** 2))
                 cv2.circle(image_copy, start_point, radius, pencil_color, 2)
                 cv2.imshow("Drawing1", image_copy)
@@ -88,9 +90,10 @@ def draw_shape(event,x,y,flags, param):
         
         end_point = (x, y)
 
-        if mode == 'circle':                    # Ends circle mode
+        if o==2:                    # Ends circle mode
             radius = int(np.sqrt((end_point[0] - start_point[0]) ** 2 + (end_point[1] - start_point[1]) ** 2))
             cv2.circle(screen, start_point, radius, pencil_color, 2)
+            o = 0
 
         elif mode == 'rectangle':               # Ends rectangle mode
             cv2.rectangle(screen, start_point, end_point, pencil_color, 2)
@@ -120,7 +123,7 @@ def main():
         limits=json.load(file)
 
     # Calling global variables
-    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing,draw
+    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing,draw,o
     
     if args.use_mouse: #If the user chooses to use mouse to test
         drawing = True  
@@ -133,8 +136,7 @@ def main():
         event = None
         drawing= False
 
-    # Defines blank canvas
-    #picture= np.full((480, 640, 3),255, dtype=np.uint8)
+   
     
     while True:
 
@@ -249,6 +251,7 @@ def main():
         elif key == ord('o'):           # Circle drawing mode       
              mode = 'circle'
              print('circle mode\n')
+             o += 1
 
         elif key == ord('e'):           # Ellipse drawing mode     
              mode = 'ellipse'

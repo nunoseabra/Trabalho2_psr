@@ -31,8 +31,7 @@ prev_maxb=0
 prev_maxg=0
 prev_maxr=0
 
-# Initializes counter
-i= 0
+
 
 #--------- FUNCTIONS ---------#
 
