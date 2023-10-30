@@ -172,7 +172,6 @@ def main():
                     else: 
                         cv2.circle(frame, (cX, cY), pencil_size // 2, pencil_color, -1)
                         cv2.circle(screen, (cX, cY), pencil_size // 2, pencil_color, -1)
-
         
         if prev_centroid and args.use_shake_prevention:         # The program was already running and checks for shake in the centroid
             # Calculate the distance between the previous and current centroids
