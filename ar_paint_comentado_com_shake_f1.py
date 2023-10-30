@@ -221,14 +221,18 @@ def main():
             pencil_size = max(1, pencil_size - 2)
             print('Pencil size decreased to: '+ Fore.YELLOW + str(pencil_size)+ '\n' + Style.RESET_ALL)
 
-        elif key == ord('1'):           # Circle drawing mode       
+        elif key == ord('o'):           # Circle drawing mode       
              mode = 'circle'
              print('circle mode\n')
 
-        elif key == ord('2'):           # Rectangle (box) drawing mode
-             mode = 'rectangle'
-             print('rectangle mode\n')
-        
+        elif key == ord('e'):           # Ellipse drawing mode     
+             mode = 'ellipse'
+             print('ellipse mode\n')
+
+        elif key == ord('s'):           # Square drawing mode     
+             mode = 'square'
+             print('square mode\n')
+
         elif key == ord('c'):
             # Clears screen and opens new canvas when 'c' pressed
             picture = np.full((480, 640, 3),255, dtype=np.uint8)
