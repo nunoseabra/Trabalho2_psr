@@ -70,6 +70,15 @@ def draw_shape(event,x,y,flags, param):
                 image_copy =screen.copy()
                 cv2.rectangle(image_copy, start_point, (x, y), pencil_color, 2)
                 cv2.imshow("Drawing1", image_copy)
+            
+            elif mode == 'ellipse':
+                image_copy =image.copy()
+                # Calcule o tamanho da elipse
+                a = abs(x - start_point[0])
+                b = abs(y - start_point[1])
+                # Desenhe a elipse
+                cv2.ellipse(image_copy, start_point, (a, b), 0, 0, 360, pencil_color, 2)
+                cv2.imshow("F3", image_copy)
 
     # Button no longer pressed - program ends and defines the radious based on end point
     elif event == cv2.EVENT_LBUTTONUP:
