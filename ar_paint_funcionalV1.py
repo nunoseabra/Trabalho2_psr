@@ -141,7 +141,7 @@ def main():
         #cv2.imshow('Drawing',screen)
 
         key = cv2.waitKey(1)
-        if key == ord('v'):
+        if key == ord('r'):
              pencil_color = (0, 0, 255)  # Vermelho
              print('Selected color to ' + Fore.RED + 'red\n' + Style.RESET_ALL)
 
