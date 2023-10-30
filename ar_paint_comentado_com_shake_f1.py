@@ -20,6 +20,7 @@ import argparse
 import numpy as np
 from datetime import datetime
 import pygame as pygame
+import keyboard
 
 #--------- INITIALIZATION ---------#
 
@@ -27,7 +28,8 @@ import pygame as pygame
 cap = cv2.VideoCapture(0)
 
 # Global variables
-drawing = False                                 # Monitors if the user is drawing 
+drawing = False                                 # Monitors if the user is drawing
+draw= False                                     # To stop drawing
 mode = 'circle'                                 # Sets the mode to circle, at first
 
 # Initializing drawing-shapes variables
@@ -111,14 +113,14 @@ def main():
     parser.add_argument('-um','--use_mouse', action='store_true', help='Use mouse position for drawing')
     args = parser.parse_args()
 
-    print('\n ' + 'Ready to Draw ...'+ '\n')
+    print('\n ' + 'Press SPACE to start drawing ...'+ '\n')
 
     # Loads color limitis from the JSON file
     with open(args.json, 'r') as file:
         limits=json.load(file)
 
     # Calling global variables
-    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing
+    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing,draw
     
     if args.use_mouse: #If the user chooses to use mouse to test
         drawing = True  
@@ -162,58 +164,47 @@ def main():
                     mouse_pos = event.pos
         else:                                   # Using normal mode - Calculates centroid
             if contours:
+
                 # If contours are found, the largest contour is the one with the biggest area
                 largest_contour = max(contours, key=cv2.contourArea)
                 M = cv2.moments(largest_contour)
-                
+                    
                 # If contour is not zero, calculate centroid
                 if M["m00"] != 0:
-                    cX = int(M["m10"] / M["m00"])
-                    cY = int(M["m01"] / M["m00"])
-                    centroid = (cX,cY)
-                    # Draws centroid in the original image with a red cross
-                    cv2.drawMarker(frame, (cX, cY), pencil_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+                        cX = int(M["m10"] / M["m00"])
+                        cY = int(M["m01"] / M["m00"])
+                        centroid = (cX,cY)
+                        # Draws centroid in the original image with a red cross
+                        cv2.drawMarker(frame, (cX, cY), pencil_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+                if not draw:
+                    pass
+                else:
+                    cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)                   
 
-                    # Uses the center of the image to paint canvas
+                        # Uses the center of the image to paint canvas
                     if pencil_size % 2 == 0:
                         cv2.circle(frame, (cX, cY), pencil_size // 2, pencil_color, -1)
                         cv2.circle(screen, (cX, cY), pencil_size // 2, pencil_color, -1)
                     else: 
                         cv2.circle(frame, (cX, cY), pencil_size // 2, pencil_color, -1)
                         cv2.circle(screen, (cX, cY), pencil_size // 2, pencil_color, -1)
-        """"
-        print(prev_centroid)
-       
-        print(centroid)
-        sleep(1)
-        
-         
-         """               
-        
-        
-        if prev_centroid and args.use_shake_prevention:         # The program was already running and checks for shake in the centroid
-            # Calculate the distance between the previous and current centroids
-            #distance = np.linalg.(np.array(prev_centroid) - np.array(centroid))
-            distance=np.sqrt((centroid[0] - prev_centroid[0]) ** 2 + (centroid[0] - prev_centroid[1]) ** 2)
-            #print(str(distance))
-            # Define a threshold for shake prevention (you can adjust this)
-            shake_threshold = 150
 
-            if distance > shake_threshold:
-                # If shake is detected, draw a single point
-                cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
-            else:
-                # Draw a line between the previous and current centroids
-                cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)
-        else:
-            # Draw a point 
-            #cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
-            # Draw a line between the previous and current centroids
-            if event == cv2.EVENT_RBUTTONDOWN:
-                pass
-            else:
-                cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)
-            
+                    if prev_centroid and args.use_shake_prevention:         # The program was already running and checks for shake in the centroid
+                        # Calculate the distance between the previous and current centroids
+                        #distance = np.linalg.(np.array(prev_centroid) - np.array(centroid))
+                        distance=np.sqrt((centroid[0] - prev_centroid[0]) ** 2 + (centroid[0] - prev_centroid[1]) ** 2)
+                        #print(str(distance))
+                        # Define a threshold for shake prevention (you can adjust this)
+                        shake_threshold = 150
+
+                        if distance > shake_threshold:
+                            # If shake is detected, draw a single point
+                            cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
+                        else:
+                            # Draw a line between the previous and current centroids
+                            cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)
+                    
+                        
         
         prev_centroid = centroid
         cv2.imshow('Drawing1', screen)
@@ -266,7 +257,15 @@ def main():
         elif key == ord('s'):           # Square drawing mode     
              mode = 'square'
              print('square mode\n')
-   
+
+        elif key== ord(' '):
+            draw= not draw
+            if draw:
+                print('Drawing!\n')
+            else:
+                print('Program on hold...\n')
+                
+
         elif key == ord('c'):
             # Clears screen and opens new canvas when 'c' pressed
             screen = np.full((480, 640, 3),255, dtype=np.uint8)
@@ -285,7 +284,7 @@ def main():
             print ( Fore.RED + 'Program interrupted\n'+ Style.RESET_ALL)
             cv2.destroyAllWindows()
             break
-
+        
 
 #--------- MAIN CODE  ---------#
 

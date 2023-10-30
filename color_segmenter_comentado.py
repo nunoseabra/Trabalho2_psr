@@ -151,7 +151,9 @@ def savefile(min_b, min_g, min_r, max_b, max_g, max_r):
     key = cv2.waitKey(1)
 
     if key == ord('w'):                                 # If 'w' is pressed, gets limits dictionary
-        limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 'G': {'min': min_g, 'max': max_g}, 'R': {'min': min_r, 'max': max_r}}}
+        limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 
+                             'G': {'min': min_g, 'max': max_g}, 
+                             'R': {'min': min_r, 'max': max_r}}}
         
         with open('limits.json', 'w') as file:          # Save limits in a JSON file
             json.dump(limits,file)
