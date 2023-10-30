@@ -12,6 +12,7 @@
 
 #--------- IMPORT FUNCTIONS ---------#
 
+from asyncio import sleep
 from colorama import Fore, Style
 import cv2
 import json
@@ -32,7 +33,7 @@ mode = 'circle'                                 # Sets the mode to circle, at fi
 # Initializing drawing-shapes variables
 start_point = (0, 0)
 end_point = (0, 0) 
-prev_centroid = None
+prev_centroid = (0,0)
 centroid = (0,0)
 mouse_pos = (0,0)
 
@@ -51,11 +52,11 @@ screen = np.zeros((512, 512, 3), dtype=np.uint8)
 # Function to draw shapes in the canva
 def draw_shape(event,x,y,flags, param):
     # Calling global variables
-    global mode,drawing,start_point,end_point,screen
+    global mode,drawing,start_point,end_point,screen, drawing
 
     # The function starts when the button is pressed
-    if event == cv2.EVENT_LBUTTONDOWN:
-        drawing = True                          # Drawing flag turns true
+    if event == cv2.EVENT_LBUTTONDOWN and drawing:
+                                # Drawing flag turns true
         start_point = (x, y)
         
     elif event == cv2.EVENT_MOUSEMOVE:          # If the mouse moves while pressed
@@ -81,8 +82,8 @@ def draw_shape(event,x,y,flags, param):
                 cv2.imshow("Drawing1", image_copy)
 
     # Button no longer pressed - program ends and defines the radious based on end point
-    elif event == cv2.EVENT_LBUTTONUP:
-        drawing = False
+    elif event == cv2.EVENT_LBUTTONUP and drawing:
+        
         end_point = (x, y)
 
         if mode == 'circle':                    # Ends circle mode
@@ -117,19 +118,21 @@ def main():
         limits=json.load(file)
 
     # Calling global variables
-    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid
+    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing
     
     if args.use_mouse: #If the user chooses to use mouse to test
+        drawing = True  
         pygame.init()
         screen = pygame.display.set_mode((640, 480))
-        pygame.display.set_caption("Drawing App")
+        pygame.display.set_caption("Drawing1")
         mouse_pos = (0, 0)
     else:
         screen = np.full((480, 640, 3), 255, dtype=np.uint8)
         event = None
+        drawing= False
 
     # Defines blank canvas
-    picture= np.full((480, 640, 3),255, dtype=np.uint8)
+    #picture= np.full((480, 640, 3),255, dtype=np.uint8)
     
     while True:
 
@@ -178,35 +181,52 @@ def main():
                     else: 
                         cv2.circle(frame, (cX, cY), pencil_size // 2, pencil_color, -1)
                         cv2.circle(screen, (cX, cY), pencil_size // 2, pencil_color, -1)
+        """"
+        print(prev_centroid)
+       
+        print(centroid)
+        sleep(1)
+        
+         
+         """               
+        
         
         if prev_centroid and args.use_shake_prevention:         # The program was already running and checks for shake in the centroid
             # Calculate the distance between the previous and current centroids
-            distance = np.linalg.norm(np.array(prev_centroid) - np.array(centroid))
-
+            #distance = np.linalg.(np.array(prev_centroid) - np.array(centroid))
+            distance=np.sqrt((centroid[0] - prev_centroid[0]) ** 2 + (centroid[0] - prev_centroid[1]) ** 2)
+            #print(str(distance))
             # Define a threshold for shake prevention (you can adjust this)
-            shake_threshold = 10
+            shake_threshold = 150
 
             if distance > shake_threshold:
                 # If shake is detected, draw a single point
                 cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
             else:
                 # Draw a line between the previous and current centroids
-                cv2.line(screen,centroid, pencil_size, pencil_color, -1)
+                cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)
         else:
             # Draw a point 
-            cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
-
+            #cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
+            # Draw a line between the previous and current centroids
+            if event == cv2.EVENT_RBUTTONDOWN:
+                pass
+            else:
+                cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)
+            
+        
         prev_centroid = centroid
         cv2.imshow('Drawing1', screen)
 
         # Shows initial frame
-        #frame_sized=cv2.resize(frame,(600,400))
+        frame_sized=cv2.resize(frame,(600,400))
         
         # Draws a shape based on the drawing mode
         cv2.setMouseCallback("Drawing1", draw_shape)
        
         # Shows initial frame
-        cv2.imshow('Original Image', cv2.flip(frame,1))
+        
+        cv2.imshow('Original Image', cv2.flip(frame_sized,1))
 
         # Shows blank canvas
         cv2.imshow('Drawing1',screen)
@@ -246,7 +266,7 @@ def main():
         elif key == ord('s'):           # Square drawing mode     
              mode = 'square'
              print('square mode\n')
-
+   
         elif key == ord('c'):
             # Clears screen and opens new canvas when 'c' pressed
             screen = np.full((480, 640, 3),255, dtype=np.uint8)
@@ -265,6 +285,7 @@ def main():
             print ( Fore.RED + 'Program interrupted\n'+ Style.RESET_ALL)
             cv2.destroyAllWindows()
             break
+
 
 #--------- MAIN CODE  ---------#
 
