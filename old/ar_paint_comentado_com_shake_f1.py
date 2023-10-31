@@ -20,7 +20,7 @@ import argparse
 import numpy as np
 from datetime import datetime
 import pygame as pygame
-from functions import applyMask,centroid_position,draw_shape,new_draw
+from Atual.functions import applyMask,centroid_position,draw_shape,new_draw
 
 #--------- INITIALIZATION ---------#
 

@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from math import sqrt
 from datetime import datetime
-from functions import get_centroid, initialization, key_press, limitsRead, repaint, windowSetup
+from Atual.functions import get_centroid, initialization, key_press, limitsRead, repaint, windowSetup
 
 draw_color = (0,0,255)
 pencil_thick = 5
