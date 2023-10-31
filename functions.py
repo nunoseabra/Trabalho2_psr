@@ -62,7 +62,7 @@ def limitsRead(file_path):
 def get_centroid(mask) :
     # find all contours (objects)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    skip=False
+    
     # if we detect objects, let's find the biggest one, make it green and calculate the centroid
     if contours:
 
@@ -97,7 +97,7 @@ def get_centroid(mask) :
         cX = None
         cY = None
         
-    return (cX,cY), image_result , skip
+    return cX,cY, image_result 
 
 def key_press(key_input,canvas):
     global draw_color, pencil_thick

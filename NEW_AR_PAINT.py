@@ -46,7 +46,7 @@ def main():
     global draw_color, pencil_thick,shake_limit
     
     # setting up the video capture
-    path, usp,ucm,umm = initialization()
+    file,usp,ucm,umm = initialization()
 
     #print('Press '+ Fore.CYAN + 'SPACE'+Style.RESET_ALL + ' to start drawing and '+Fore.CYAN+ 'd'+ Style.RESET_ALL + ' to pause!\n')
     print('To activate/deactivate modes:\n')
@@ -55,7 +55,7 @@ def main():
     print('Mouse mode - press '+Fore.CYAN+ 'm'+ Style.RESET_ALL + ' \n')
     print('Press '+ Fore.CYAN + 'SPACE'+Style.RESET_ALL + ' to start drawing and '+Fore.CYAN+ 'd'+ Style.RESET_ALL + ' to pause!\n')
     
-    limits = limitsRead(path) 
+    limits = limitsRead(file) 
 
     capture = cv2.VideoCapture(0)
     _, frame = capture.read()
@@ -80,7 +80,6 @@ def main():
         frame_flip = cv2.flip(frame, 1)
         cv2.imshow( camera_window,frame_flip)
 
-        
         if ucm: 
             drawing_canvas = frame_flip
         else:
@@ -91,14 +90,18 @@ def main():
         frame_wMask = cv2.bitwise_and(frame_flip,frame_flip, mask = frame_mask)
         cv2.imshow(mask_window,frame_wMask)
         
-        (cx,cy),frame_test,skip= get_centroid(frame_mask)
+        cx,cy,frame_centroid= get_centroid(frame_mask)
         #cv2.imshow(camera_window, frame_test)
-        cv2.imshow( mask_window, frame_test)
+        cv2.imshow( mask_window, frame_centroid)
 
         if not umm:    
-            (cx,cy),frame_test,skip = get_centroid(frame_mask)
+            cx,cy,frame_test = get_centroid(frame_mask)
             cv2.imshow(mask_window, frame_test)
-            
+            print(str(cx))
+            image_copy=drawing_canvas.copy()
+            cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+            cv2.imshow(drawing_window,image_copy)
+
         else:
             
             cx = mouse.coords[0]
@@ -154,6 +157,8 @@ def main():
                     print('Circle draw\n')
 
                 elif key == "e":
+                    image_copy=drawing_canvas.copy()
+                    
                     draws[len(draws)-1] = (Shapes("ellipse",(cox,coy),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
                     print('Ellipse draw\n')
