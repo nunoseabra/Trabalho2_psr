@@ -118,12 +118,15 @@ def main():
         
         
         #hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        mask=cv2.inRange(frame, (limits['limits']['B']['min'], limits['limits']['G']['min'], limits['limits']['R']['min']),
-                      (limits['limits']['B']['max'], limits['limits']['G']['max'], limits['limits']['R']['max']))
-        
+        low=(limits['limits']['B']['min'], limits['limits']['G']['min'], limits['limits']['R']['min'])
+        print(low)
+        high=(limits['limits']['B']['max'], limits['limits']['G']['max'], limits['limits']['R']['max'])
+        print(high)
+        #mask=cv2.inRange(frame, low,high)
+        mask=frame
         
 
-        pencil_position_frame = centroid_position(mask)
+        pencil_position_frame = centroid_position(mask,pencil_color)
 
         print(pencil_position_frame)
         cv2.imshow(mask_window,pencil_position_frame)

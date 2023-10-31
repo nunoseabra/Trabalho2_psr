@@ -109,11 +109,11 @@ def centroid_position(mask,pencil_color):
                 if M["m00"] != 0:
                         cX = int(M["m10"] / M["m00"]) 
                         cY = int(M["m01"] / M["m00"])
-                        pencil_coords = (cX,cY)
+                        
                         # Draws centroid in the original image with a red cross
-                        cv2.drawMarker(final_image,pencil_coords, pencil_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+                        cv2.drawMarker(final_image,(cX,cY), pencil_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
         
-                return final_image 
+                return cX,cY,final_image 
         
 def new_draw(old_coords,pencil_color,pencil_size,usp,image,draw):
                 global pencil_coords
