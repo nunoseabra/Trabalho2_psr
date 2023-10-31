@@ -146,17 +146,19 @@ def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
 # Function to save color limits data in a JSON file
 def savefile(min_b, min_g, min_r, max_b, max_g, max_r):
 
-    # If a key is pressed, reads key
-    key = cv2.waitKey(1)
-
-    if key == ord('w'):                                 # If 'w' is pressed, gets limits dictionary
-        limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 
-                             'G': {'min': min_g, 'max': max_g}, 
-                             'R': {'min': min_r, 'max': max_r}}}
+                            
+    limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 'G': {'min': min_g, 'max': max_g},'R': {'min': min_r, 'max': max_r}}}
         
-        with open('limits.json', 'w') as file:          # Save limits in a JSON file
-            json.dump(limits,file)
-            print('Saved.....') 
+        # Save limits in a JSON file
+        
+        
+
+    json_object = json.dumps(limits, indent=4)
+
+    with open("limits.json", "w") as outfile:
+        outfile.write(json_object)
+
+    print('Saved.....') 
 
 
 #--------- MAIN FUNCTION ---------#

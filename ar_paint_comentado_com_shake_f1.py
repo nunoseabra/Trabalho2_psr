@@ -20,90 +20,17 @@ import argparse
 import numpy as np
 from datetime import datetime
 import pygame as pygame
-import keyboard
+from functions import applyMask,centroid_position,draw_shape,new_draw
 
 #--------- INITIALIZATION ---------#
 
 # Initializes video capture
-cap = cv2.VideoCapture(0)
+capture = cv2.VideoCapture(0)
 
-# Global variables
-drawing = False                                 # Monitors if the user is drawing
-draw= False                                     # To stop drawing
-mode = 'circle'                                 # Sets the mode to circle, at first
-
-# Initializing drawing-shapes variables
-start_point = (0, 0)
-end_point = (0, 0) 
-prev_centroid = (0,0)
-centroid = (0,0)
-mouse_pos = (0,0)
-o = 0
-
-# Defines initial variables for color (red), pencil size and drawing mode
-pencil_color = (0, 0, 255)
-pencil_size = 2 
-mode = 'circle'
+pencil_coords=(None,None)
 
 # Defines blank canvas
-screen = np.zeros((512, 512, 3), dtype=np.uint8)
-
-
-#--------- FUNCTIONS ---------#
-
-#----- Advanced feature 3
-# Function to draw shapes in the canva
-def draw_shape(event,x,y,flags, param):
-    # Calling global variables
-    global mode,drawing,start_point,end_point,screen, drawing,o
-
-    # The function starts when the button is pressed
-    if event == cv2.EVENT_LBUTTONDOWN and drawing:
-                                # Drawing flag turns true
-        start_point = (x, y)
-        
-    elif event == cv2.EVENT_MOUSEMOVE :          # If the mouse moves while pressed
-        if drawing:
-            if mode == 'circle':                # Circle mode
-                image_copy =screen.copy()
-                
-                radius = int(np.sqrt((x - start_point[0]) ** 2 + (y - start_point[1]) ** 2))
-                cv2.circle(image_copy, start_point, radius, pencil_color, 2)
-                cv2.imshow("Drawing1", image_copy)
-
-            elif mode == 'rectangle':           # Rectangle mode
-                image_copy =screen.copy()
-                cv2.rectangle(image_copy, start_point, (x, y), pencil_color, 2)
-                cv2.imshow("Drawing1", image_copy)
-            
-            elif mode == 'ellipse':
-                image_copy =screen.copy()
-                # Calcule o tamanho da elipse
-                a = abs(x - start_point[0])
-                b = abs(y - start_point[1])
-                # Desenhe a elipse
-                cv2.ellipse(image_copy, start_point, (a, b), 0, 0, 360, pencil_color, 2)
-                cv2.imshow("Drawing1", image_copy)
-
-    # Button no longer pressed - program ends and defines the radious based on end point
-    elif event == cv2.EVENT_LBUTTONUP and drawing:
-        
-        end_point = (x, y)
-
-        if o==2:                    # Ends circle mode
-            radius = int(np.sqrt((end_point[0] - start_point[0]) ** 2 + (end_point[1] - start_point[1]) ** 2))
-            cv2.circle(screen, start_point, radius, pencil_color, 2)
-            o = 0
-
-        elif mode == 'rectangle':               # Ends rectangle mode
-            cv2.rectangle(screen, start_point, end_point, pencil_color, 2)
-        
-        elif mode == 'ellipse':
-            #image_copy = image.copy()
-            a = abs(end_point[0] - start_point[0])
-            b = abs(end_point[1] - start_point[1])
-            cv2.ellipse(screen, start_point, (a, b), 0, 0, 360, pencil_color, 2)
-
+#screen = np.full((512, 512, 3),255,dtype=np.uint8)
 
 #--------- MAIN FUNCTION ---------#
 
@@ -116,113 +43,108 @@ def main():
     parser.add_argument('-um','--use_mouse', action='store_true', help='Use mouse position for drawing')
     args = parser.parse_args()
 
-    print('\n ' + 'Press SPACE to start drawing ...'+ '\n')
+    #print('\n ' + 'Press SPACE to start drawing ...'+ '\n')
 
     # Loads color limitis from the JSON file
     with open(args.json, 'r') as file:
         limits=json.load(file)
 
+     # boolean that determines if shake prevention is to be used or not
+    if args.use_shake_prevention:
+         usp = args['use_shake_prevention'] 
+    else: 
+         usp=False
+    
+    # boolean that determines if the mouse pointer is to be used or not
+    if args.use_mouse:
+         use_mouse = args['mouse'] 
+    else: 
+         use_mouse=False
+
+    # list of all the draw moves done so far
+    draw_moves = []
+
+
     # Calling global variables
-    global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing,draw,o
+    #global mode, pencil_color, screen, pencil_size, mouse_pos, prev_centroid,centroid,drawing,draw,o
     
-    if args.use_mouse: #If the user chooses to use mouse to test
-        drawing = True  
-        pygame.init()
-        screen = pygame.display.set_mode((640, 480))
-        pygame.display.set_caption("Drawing1")
-        mouse_pos = (0, 0)
-    else:
-        screen = np.full((480, 640, 3), 255, dtype=np.uint8)
-        event = None
-        drawing= False
+    # setting up the video capture  
+    capture = cv2.VideoCapture(0)
+    _, frame = capture.read() # initial frame just to figure out proper window dimensions
 
-   
+    # dimensions for all windows
+    scale = 0.6
+    window_width = int(600 * scale)
+    window_height = int(400 * scale)
+
+      # continuing video capture setup
+    camera_window = 'Camera capture'
+    cv2.namedWindow(camera_window, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(camera_window, (window_width, window_height))
+
+    # setting up the window that shows the mask being applied
+    mask_window = 'Masked capture'
+    cv2.namedWindow(mask_window, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(mask_window, (window_width, window_height))
+
+    drawing_window= 'Drawing Window'
+    cv2.namedWindow(drawing_window, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(drawing_window, (window_width, window_height))
+
+    # define positions of each window on screen (this way, they don't overlap)
+    cv2.moveWindow(camera_window, 200, 100)
+    cv2.moveWindow(mask_window, 1000, 100)
+    cv2.moveWindow(drawing_window, 1000, 300)
+
+    pencil_color = (0, 0, 255)
+    pencil_size = 2 
+    old_coords = (None,None)
     
+    drawing = False                                 # Monitors if the user is drawing
+    draw= False                                     # To stop drawing
+    mode = 'circle'                                 # Sets the mode to circle, at first
+
+
+    # Defines initial variables for color (red), pencil size and drawing mode
+    pencil_color = (0, 0, 255)
+    pencil_size = 2 
+    mode = 'circle'
+    global pencil_coords
+
     while True:
-
+    
         # If a frame is not captured the code breaks
-        ret, frame = cap.read()
-        if not ret:
-            break
+        ret, frame = capture.read()
         
-        # Image converted to HSV
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-        # Detects color based on JSON file limits
-        mask = cv2.inRange(hsv, (limits['limits']['B']['min'], limits['limits']['G']['min'], limits['limits']['R']['min']),
-                       (limits['limits']['B']['max'], limits['limits']['G']['max'], limits['limits']['R']['max']))
-
-        # Finds the contours of the largest object in the mask area
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        #----- Advanced feature 1
-        # Mouse mode conditions
-        if args.use_mouse:                      #Using mouse mode
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    pass
-                elif event.type == pygame.MOUSEMOTION:
-                    mouse_pos = event.pos
-        else:                                   # Using normal mode - Calculates centroid
-            if contours:
-
-                # If contours are found, the largest contour is the one with the biggest area
-                largest_contour = max(contours, key=cv2.contourArea)
-                M = cv2.moments(largest_contour)
-                    
-                # If contour is not zero, calculate centroid
-                if M["m00"] != 0:
-                        cX = int(M["m10"] / M["m00"])
-                        cY = int(M["m01"] / M["m00"])
-                        centroid = (cX,cY)
-                        # Draws centroid in the original image with a red cross
-                        cv2.drawMarker(frame, (cX, cY), pencil_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-                if not draw:
-                    pass
-                else:
-                    cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)                   
-
-                        # Uses the center of the image to paint canvas
-                    if pencil_size % 2 == 0:
-                        cv2.circle(frame, (cX, cY), pencil_size // 2, pencil_color, -1)
-                        cv2.circle(screen, (cX, cY), pencil_size // 2, pencil_color, -1)
-                    else: 
-                        cv2.circle(frame, (cX, cY), pencil_size // 2, pencil_color, -1)
-                        cv2.circle(screen, (cX, cY), pencil_size // 2, pencil_color, -1)
-
-                    if prev_centroid and args.use_shake_prevention:         # The program was already running and checks for shake in the centroid
-                        # Calculate the distance between the previous and current centroids
-                        #distance = np.linalg.(np.array(prev_centroid) - np.array(centroid))
-                        distance=np.sqrt((centroid[0] - prev_centroid[0]) ** 2 + (centroid[0] - prev_centroid[1]) ** 2)
-                        #print(str(distance))
-                        # Define a threshold for shake prevention (you can adjust this)
-                        shake_threshold = 150
-
-                        if distance > shake_threshold:
-                            # If shake is detected, draw a single point
-                            cv2.circle(screen,centroid, pencil_size, pencil_color, -1)
-                        else:
-                            # Draw a line between the previous and current centroids
-                            cv2.line(screen, (prev_centroid[0],prev_centroid[1]),(centroid[0],centroid[1]),pencil_color, pencil_size)
-                    
-                        
         
-        prev_centroid = centroid
-        cv2.imshow('Drawing1', screen)
-
-        # Shows initial frame
-        frame_sized=cv2.resize(frame,(600,400))
+        #hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask=cv2.inRange(frame, (limits['limits']['B']['min'], limits['limits']['G']['min'], limits['limits']['R']['min']),
+                      (limits['limits']['B']['max'], limits['limits']['G']['max'], limits['limits']['R']['max']))
         
+        
+
+        pencil_position_frame = centroid_position(mask)
+
+        print(pencil_position_frame)
+        cv2.imshow(mask_window,pencil_position_frame)
+        
+        new_draw(old_coords,pencil_color,pencil_size,usp,screen)
+        
+        print(pencil_coords)
+        sleep(1000)
+
+        old_coords = pencil_coords
+
+        print(old_coords)
+        sleep(1000)
+
+      
         # Draws a shape based on the drawing mode
-        cv2.setMouseCallback("Drawing1", draw_shape)
-       
-        # Shows initial frame
-        
-        cv2.imshow('Original Image', cv2.flip(frame_sized,1))
-
+        cv2.setMouseCallback(drawing_window, draw_shape(screen,pencil_color,mode))
+        # shows initial frame
+        cv2.imshow(camera_window,frame)
         # Shows blank canvas
-        cv2.imshow('Drawing1',screen)
+        cv2.imshow(drawing_window,screen)
         #cv2.imshow('Drawing2', picture)
 
         # If a key is pressed, reads key
@@ -271,7 +193,7 @@ def main():
 
         elif key == ord('c'):
             # Clears screen and opens new canvas when 'c' pressed
-            screen = np.full((480, 640, 3),255, dtype=np.uint8)
+            screen = np.full((window_width, window_height, 3),255)
             print( Fore.YELLOW + 'New canvas\n'+ Style.RESET_ALL)
 
         elif key == ord('w'):
