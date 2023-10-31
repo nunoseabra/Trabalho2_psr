@@ -120,7 +120,7 @@ def main():
 
         if key == "d":
             draw_mode = not draw_mode
-            (cx,cy) = (None,None)
+            (prev_cx,prev_cy) = (None,None)
             
 
             print('\n')
@@ -165,16 +165,15 @@ def main():
                     print('New canvas\n')
                 else:
                     try:
-                        if usp:
+                        if usp and (prev_cx,prev_cy) != (None,None):
                             diffX = abs(prev_cx - cx)
                             diffY = abs(prev_cy - cy)
                             if diffX>shake_limit or diffY>shake_limit: # this line performs shake detection
                                 draws.append(Shapes("dot",(0,0),(prev_cx,prev_cy),draw_color,pencil_thick))
                             else:
                                 draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
-                        else:
-                            
-                            draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
+                        elif (prev_cx,prev_cy) != (None,None):
+                                draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
                     except:
                         prev_cx, prev_cy = cx,cy
 
