@@ -6,6 +6,7 @@
 import json
 import argparse
 import sys
+from colorama import Fore, Style
 import cv2
 import numpy as np
 from math import sqrt
@@ -29,16 +30,16 @@ def initialization():
     ucm = args['use_cam_mode'] # Use live feed from the cam to be used as the canvas
     umm = args['use_mouse_mode'] # Use mouse as the pencil
 
-    print('Drawing on mode:')
+    print('\nDrawing modes selected:')
     if usp:
-        print('use_shake_prevention')
+        print('Use_shake_prevention')
     if ucm:
-        print('use_cam_mode')
+        print('Use_cam_mode')
     if umm:
-        print('use_mouse_mode')
+        print('Use_mouse_mode')
     if (not usp)and (not ucm) and (not umm):
-        print('default')
-
+        print('Default')
+    print()
     return file_path , usp, ucm,umm
 
 def limitsRead(file_path):
@@ -135,7 +136,7 @@ def key_press(key_input,canvas):
 
         # quit program
     elif key_input=='q':
-        print('Program interrupted! \n')
+        print('Program interrupted!\n')
         return False
     
     return True
@@ -220,9 +221,16 @@ def windowSetup(frame):
                
 def main():
     global draw_color, pencil_thick,shake_limit
-
+    
     # setting up the video capture
     path, usp,ucm,umm = initialization()
+
+    #print('Press '+ Fore.CYAN + 'SPACE'+Style.RESET_ALL + ' to start drawing and '+Fore.CYAN+ 'd'+ Style.RESET_ALL + ' to pause!\n')
+    print('To activate/deactivate modes:\n')
+    print('Shake prevention - press '+Fore.CYAN+ 'n'+ Style.RESET_ALL + ' \n')
+    print('Camera as canvas - press '+Fore.CYAN+ 'l'+ Style.RESET_ALL + ' \n')
+    print('Mouse mode - press '+Fore.CYAN+ 'm'+ Style.RESET_ALL + ' \n')
+    print('Press '+ Fore.CYAN + 'SPACE'+Style.RESET_ALL + ' to start drawing and '+Fore.CYAN+ 'd'+ Style.RESET_ALL + ' to pause!\n')
 
     limits = limitsRead(path) 
 
@@ -275,52 +283,58 @@ def main():
             cy = mouse.coords[1]
             
             if cx:
-                cv2.line(drawing_canvas, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
-                cv2.line(drawing_canvas, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
-    
+                image_copy=drawing_canvas.copy()
+                cv2.line(image_copy, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
+                cv2.line(image_copy, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
+                cv2.imshow(drawing_window,image_copy)
 
 
         k = cv2.waitKey(1) & 0xFF
-        key_chr = str(chr(k))
 
-        if not key_press(key_chr,drawing_canvas): 
+        key = str(chr(k))
+        if not key_press(key,drawing_canvas): 
             print('Program interrupted\n')
             break
 
-        if key_chr == "d":
+        if key == "d":
             draw_mode = not draw_mode
-            print('draw_mode: '+ str(draw_mode)+'\n')
-        elif key_chr == " ":
+            print('Draw_mode: '+ str(draw_mode)+'\n')
+
+        elif key == " ":
             draw_mode= True
-            print('draw_mode: '+ str(draw_mode)+'\n')
-        elif key_chr == "m":
+            print('\nDesenho iniciado!\n')
+
+        elif key == "m":
             umm= not umm
             print('Mouse mode: '+ str(umm)+'\n')
-        elif key_chr == "l":
+
+        elif key == "n":
+            usp= not usp
+            print('Shake prevention mode: '+ str(usp)+'\n')
+
+        elif key == "l":
             ucm= not ucm
             print('Camera as canvas mode: '+ str(ucm)+'\n')
-        
 
         if draw_mode :
             if (cx,cy) != (None,None):
-                if key_chr == "s":
+                if key == "s":
                     draws[len(draws)-1] = (Shapes("square",(cox,coy),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
                     print('Square mode: True\n')
 
-                elif key_chr == "o":
+                elif key == "o":
                     draws[len(draws)-1] = (Shapes("circle",(cox,coy),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
                     print('Circle mode: True\n')
 
-                elif key_chr == "e":
+                elif key == "e":
                     draws[len(draws)-1] = (Shapes("ellipse",(cox,coy),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
                     print('Ellipse mode: True\n')
 
-                elif key_chr == 'c':
+                elif key == 'c':
                     draws = []
-                    drawing_canvas=drawing_cache
                     prev_cx,prev_cy = cx,cy
                     print('New canvas\n')
                 else:

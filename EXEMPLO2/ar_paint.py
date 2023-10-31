@@ -11,21 +11,26 @@ import numpy as np
 from math import sqrt
 from datetime import datetime
 
-draw_color = (0,0,255)
+draw_color = (255,255,255)
 pencil_thickness = 5
+shake_threshold = 50
+centroid_area = 0 
 
 def initialization():
     # Input Arguments
     parser = argparse.ArgumentParser(description='Ar Paint ')
     parser.add_argument('-j','--json',type = str, required= False , help='Full path to json file', default='limits.json')
-    parser.add_argument('-usp','--use_shake_prevention', action='store_true', help='Use shake prevention mode')
+    parser.add_argument('-usp','--use_shake_prevention', action='store_true', help='Use shake prevention mode, change shake prevention threshold using , and .')
     parser.add_argument('-ucc','--use_cam_canvas', action='store_true', help='Use camera as canvas')
+    parser.add_argument('-um','--use_mouse', action='store_true', help='Use mouse as the pencil')
     args = vars(parser.parse_args())
+   
 
     path = 'limits.json' if not args['json'] else args['json'] # Path for the json file
     usp = args['use_shake_prevention'] # Shake prevention mode
     ucc = args['use_cam_canvas'] # Use live feed from the cam to be used as the canvas
-    return path , usp, ucc
+    um = args['use_mouse'] # Use mouse as the pencil
+    return path, usp, ucc, um
 
 def readFile(path):
     try:
@@ -39,14 +44,21 @@ def readFile(path):
     return limits
 
 def get_centroid(mask) :
+    global centroid_area,shake_threshold
     # find all contours (objects)
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    
+    skip = False
     # if we detect objects, let's find the biggest one, make it green and calculate the centroid
     if cnts:
 
         # find the biggest object
         cnt = max(cnts, key=cv2.contourArea)
+
+        cnt_Area = cv2.contourArea(cnt)
+        # diff_Area = abs(centroid_area-cnt_Area)
+        # if diff_Area > (cnt_Area/2):
+        #     skip = True
+        #     centroid_area = cnt_Area-(diff_Area*0.25)
 
         # make it green (but still show other objects in white)
         biggest_obj = np.zeros(mask.shape, np.uint8)
@@ -76,10 +88,12 @@ def get_centroid(mask) :
         cX = None
         cY = None
         
-    return (cX,cY), image_result 
+    return (cX,cY), image_result , skip
 
 def key_press(key_input,canvas):
-    global draw_color, pencil_thickness
+    global draw_color, pencil_thickness, shake_threshold
+    height,width,_ = np.shape(canvas)
+    max_threshold = max(height,width)
         # quit program
     if key_input=='q':
         return False
@@ -108,7 +122,14 @@ def key_press(key_input,canvas):
         name_canvas_colored = 'drawing_' + formatted_date + '_colored.jpg'
         cv2.imwrite(name_canvas, canvas)
         cv2.imwrite(name_canvas_colored, canvas)
-        
+    elif key_input==',':
+        if shake_threshold > 0:
+            shake_threshold -= 50 
+            print("Shake prevension Threshold: ",shake_threshold/max_threshold*100,"%")
+    elif key_input=='.':
+        if shake_threshold < (max_threshold-50):
+            shake_threshold += 50
+            print("Shake prevension Threshold: ",shake_threshold/max_threshold*100,"%")
     return True
 
 class Figure:
@@ -143,11 +164,25 @@ def redraw_painting(frame, figures):
         
         elif step.type == "dot":        
             cv2.circle(frame, step.coord_final, 1, step.color,step.thickness) 
+
+class Mouse:
+    
+    def __init__(self):
+        self.coords = (None,None)
+        self.pressed = False
+
+    def update_mouse(self,event,x,y,flags,param):
+        self.coords = (x,y)
+
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.pressed = True
+        elif event == cv2.EVENT_LBUTTONUP:
+            self.pressed = False
                
 def main():
     global draw_color, pencil_thickness
     # setting up the video capture
-    path, usp, ucc = initialization()
+    path, usp, use_cam, use_mouse = initialization()
     ranges = readFile(path) 
 
     capture = cv2.VideoCapture(0)
@@ -164,12 +199,17 @@ def main():
     
     draw_moves = []
     flag_draw = False
+
+    if use_mouse:
+        mouse = Mouse()
+        cv2.setMouseCallback("Paint Window", mouse.update_mouse)
+
     ## Operação em contínuo ##
     while True:
         _,frame = capture.read()
         flipped_frame = cv2.flip(frame, 1)
         paint_window.fill(255)
-        if ucc: 
+        if use_cam: 
             operating_frame = flipped_frame
         else:
             operating_frame = paint_window
@@ -178,9 +218,19 @@ def main():
 
         frame_wMask = cv2.bitwise_and(flipped_frame,flipped_frame, mask = frame_mask)
         cv2.imshow("Original window",frame_wMask)
-        
-        (cx,cy),frame_test = get_centroid(frame_mask)
-        cv2.imshow("Centroid window", frame_test)
+
+        if not use_mouse:    
+            (cx,cy),frame_test,skip = get_centroid(frame_mask)
+            cv2.imshow("Centroid window", frame_test)
+            if skip: continue
+        else:
+            cx = mouse.coords[0]
+            cy = mouse.coords[1]
+            
+            if cx:
+                cv2.line(operating_frame, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
+                cv2.line(operating_frame, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
+    
 
         k = cv2.waitKey(1) & 0xFF
 
@@ -191,6 +241,7 @@ def main():
             flag_draw = True
 
         if flag_draw :
+
             if (cx,cy) != (None,None):
                 if key_chr == "s":
                     draw_moves[len(draw_moves)-1] = (Figure("square",(cox,coy),(cx,cy),draw_color,pencil_thickness))
@@ -206,7 +257,15 @@ def main():
                     cx_last,cy_last = cx,cy
                 else:
                     try:
-                        draw_moves.append(Figure("line",(cx_last,cy_last),(cx,cy),draw_color,pencil_thickness))
+                        if usp:
+                            diffX = abs(cx_last - cx)
+                            diffY = abs(cy_last - cy)
+                            if diffX>shake_threshold or diffY>shake_threshold: # this line performs shake detection
+                                draw_moves.append(Figure("dot",(0,0),(cx_last,cy_last),draw_color,pencil_thickness))
+                            else:
+                                draw_moves.append(Figure("line",(cx_last,cy_last),(cx,cy),draw_color,pencil_thickness))
+                        else:
+                            draw_moves.append(Figure("line",(cx_last,cy_last),(cx,cy),draw_color,pencil_thickness))
                     except:
                         cx_last,cy_last = cx,cy
                 if k == 0xFF:
