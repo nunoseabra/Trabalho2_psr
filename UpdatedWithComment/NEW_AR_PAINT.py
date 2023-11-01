@@ -90,7 +90,6 @@ def init():
     print()
     return file_path , usp, ucm, umm
 
-
 # Function to get RGB limits
 def getLimits(file_path):
     try:
@@ -102,7 +101,6 @@ def getLimits(file_path):
         sys.exit('The .json file doesn\'t exist.')
 
     return limits
-
 
 # Function to get centroid
 def get_centroid(mask):
@@ -148,7 +146,6 @@ def get_centroid(mask):
         
     return cX,cY, image_result 
 
-
 # Defines key functions to change color, size and format of the pencil 
 def key_press(key_input,canvas):
     global draw_color, pencil_thick
@@ -191,7 +188,6 @@ def key_press(key_input,canvas):
     
     return True
 
-
 # Function to draw shapes
 def shapesFunc(frame, figures):
     for step in figures:
@@ -216,7 +212,7 @@ def shapesFunc(frame, figures):
         
         elif step.type == "dot":                                                                    # Draw dot
             cv2.circle(frame, step.coord_final, 1, step.color,step.thickness) 
-    
+    return frame
 
 # Function to configure windows
 def windowSetup(frame):
@@ -246,8 +242,8 @@ def windowSetup(frame):
     cv2.moveWindow(drawing_window, 1000, 600)
 
     drawing_cache = np.full((window_height,window_width,3),255,dtype=np.uint8)
+    
     return camera_window,mask_window,drawing_window,drawing_cache
-
 
 # Function to define squares   
 def square(event,x,y,image):
@@ -261,8 +257,7 @@ def square(event,x,y,image):
     elif event == cv2.EVENT_MOUSEMOVE:  # For mouse mode
         image_copy=image.copy()
         cv2.rectangle(image_copy, start_point, (x, y), draw_color, 2)
-
-    
+ 
 # Function to divide image in a grid to paint and define color zones (a grid)
 def getgrid(image):
     # Initizalizing grid
@@ -284,14 +279,16 @@ def getgrid(image):
 
     # Gets contours
     contours, _ = cv2.findContours(grid, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    numbers_to_colors = [(0,0,255), (0,255,0), (255,0,0)]
+    shuffle(numbers_to_colors)
 
     return contours, numbers_to_colors
-
 
 # Function to get the contours and associate each one with a retangular zone
 def contours(original, contours, numbers):
     # Initialize color associacion 
-    color = (255,255,255)
+    color = (0,0,0)
 
     for i in range(len(contours)):                              # For each zone (every contour represents a zone)
         c = contours[i]
@@ -305,23 +302,20 @@ def contours(original, contours, numbers):
 
     return cv2.drawContours(original, contours, -1, color, 3)
 
-
 # Function to attribute a color to a grid space and number
 def colorswindow(numbers_to_colors, accuracy=None):
     # Initialize image
-    bg = np.zeros([300,350,3],dtype=np.uint8)
+    bg = np.zeros([250,300,3],dtype=np.uint8)
 
     # Associates color to space
     for i in range(3):
-        color = 'red' if numbers_to_colors[i]==(0,0,255) else ('green' if numbers_to_colors[i]==(0,255,0) else 'blue')
-        cv2.putText(bg, str(i+1) + ' - ' + color, (50, 50+50*i), cv2.FONT_HERSHEY_SIMPLEX, 0.9, numbers_to_colors[i], 2)
+        colour = 'Red -press r)' if numbers_to_colors[i]==(0,0,255) else ('Green  (g)' if numbers_to_colors[i]==(0,255,0) else 'Blue  (b)')
+        cv2.putText(bg, str(i+1) + ' - ' + colour, (50, 50+50*i), cv2.FONT_HERSHEY_SIMPLEX, 0.9, numbers_to_colors[i], 2)
 
-    # Accuracu of the painting
     if accuracy!=None:
         cv2.putText(bg, 'Accuracy: ' + str(accuracy) + '%', (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,255,255), 2)
     
     return bg
-
 
 # Function to calculate accuracy
 def calc_accuracy(image, contours, zone_numbers, numbers_to_colors):
@@ -389,6 +383,20 @@ def main():
     low_limits = (limits['B']['min'], limits['G']['min'], limits['R']['min'])
     high_limits = (limits['B']['max'], limits['G']['max'], limits['R']['max'])
 
+    if color_zones:
+        zones, numbers_to_colors = getgrid(drawing_canvas)
+        num_zones = len(zones)
+        color_numbers = []
+        for _ in range(num_zones):
+            color_numbers.append(randint(1,3))
+
+        stats = colorswindow(numbers_to_colors)
+        stats_window = 'stats'
+
+        cv2.namedWindow(stats_window, cv2.WINDOW_NORMAL)
+        cv2.moveWindow(stats_window, 100, 600)
+        cv2.imshow(stats_window, stats)
+
     # Reading mouse callback
     mouse = Mouse()
     cv2.setMouseCallback(drawing_window, mouse.update_mouse)
@@ -406,6 +414,9 @@ def main():
         else:
             drawing_canvas = drawing_cache
         
+        if color_zones:
+            grid= contours(drawing_window, zones, color_numbers)
+            drawing_canvas=grid
         # Frames and showing mask
         frame_mask = cv2.inRange(frame_flip, low_limits, high_limits)
         frame_wMask = cv2.bitwise_and(frame_flip,frame_flip, mask = frame_mask)
@@ -436,7 +447,7 @@ def main():
                 cv2.imshow(drawing_window,image_copy)
 
         # Reads key
-        k = cv2.waitKey(1)
+        k = cv2.waitKey(1) & 0xFF
         key = str(chr(k))
 
         # Safety measure if key is not pressed
@@ -474,6 +485,9 @@ def main():
 
         elif key == "l":                                    # Alternates between having or not canvas mode
             ucm= not ucm
+            print('Camera as canvas mode: '+ str(ucm)+'\n')
+        elif key == "t":                                    # Alternates between having or not canvas mode
+            color_zones= not color_zones
             print('Camera as canvas mode: '+ str(ucm)+'\n')
         
         # If drwaing mode is active
@@ -526,7 +540,7 @@ def main():
                     prev_cx,prev_cy = cx,cy
 
             # Calling shapes function        
-            shapesFunc(drawing_canvas,draws)
+            drawing_canvas=shapesFunc(drawing_canvas,draws)
         
         # Shows windows
         cv2.imshow(camera_window,drawing_canvas)

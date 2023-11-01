@@ -404,6 +404,7 @@ def main():
 
         if ucm:  
             drawing_canvas = frame_flip
+            cv2.imshow(drawing_window,drawing_canvas)
         else:
             drawing_canvas = drawing_cache
         
