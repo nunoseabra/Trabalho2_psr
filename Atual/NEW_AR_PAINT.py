@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 from math import sqrt
 from datetime import datetime
-from Atual.functions import get_centroid, initialization, key_press, limitsRead, repaint, windowSetup
+from functions import get_centroid, initialization, key_press, limitsRead, repaint, square, windowSetup
 
 draw_color = (0,0,255)
 pencil_thick = 5
@@ -78,7 +78,7 @@ def main():
         _,frame = capture.read()
         #frame_sized=cv2.resize(frame,(int(frame.shape[0]*0.6),int(frame.shape[1]*0.6)))
         frame_flip = cv2.flip(frame, 1)
-        cv2.imshow( camera_window,frame_flip)
+        cv2.imshow(camera_window,frame_flip)
 
         if ucm: 
             drawing_canvas = frame_flip
@@ -101,6 +101,7 @@ def main():
             image_copy=drawing_canvas.copy()
             cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
             cv2.imshow(drawing_window,image_copy)
+            
 
         else:
             
@@ -124,8 +125,6 @@ def main():
         if key == "d":
             draw_mode = not draw_mode
             (prev_cx,prev_cy) = (None,None)
-            
-
             print('\n')
 
         elif key == " ":
@@ -143,12 +142,13 @@ def main():
         elif key == "l":
             ucm= not ucm
             print('Camera as canvas mode: '+ str(ucm)+'\n')
-
+        
         if draw_mode :
             if (cx,cy) != (None,None):
                 if key == "s":
                     draws[len(draws)-1] = (Shapes("square",(cox,coy),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
+                    #cv2.imshow(drawing_window,square(event,cx,cy,drawing_canvas))
                     print('Square draw\n')
 
                 elif key == "o":
@@ -185,8 +185,7 @@ def main():
                 if k == 0xFF:
                     cox,coy = cx,cy
                     prev_cx,prev_cy = cx,cy
-                    print('prev_',prev_cx)
-                    print('cx ',cx)
+                    
             repaint(drawing_canvas,draws)
             
         cv2.imshow( drawing_window,drawing_canvas)

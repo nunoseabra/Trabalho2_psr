@@ -199,4 +199,20 @@ def windowSetup(frame):
     
 
     return camera_window,mask_window,drawing_window,drawing_cache
-     
+    
+def square(event,x,y,image):
+    
+    if event == cv2.EVENT_LBUTTONDOWN:
+        
+        start_point = (x, y)
+        
+    elif event == cv2.EVENT_MOUSEMOVE:
+
+        image_copy=image.copy()
+        cv2.rectangle(image_copy, start_point, (x, y),draw_color, 2)
+    elif event == cv2.EVENT_LBUTTONUP: 
+        end_point = (x, y)   
+        cv2.rectangle(image, start_point, end_point, draw_color, 2)
+
+
+    
