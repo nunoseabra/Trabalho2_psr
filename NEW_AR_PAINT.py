@@ -5,6 +5,7 @@
 
 import json
 import argparse
+from random import randint, shuffle
 import sys
 from colorama import Fore, Style
 import cv2
@@ -116,15 +117,13 @@ def key_press(key_input,canvas):
 
         # decrease pencil size
     elif key_input=='-':
-        if pencil_thick > 0:
-            pencil_thick -= 5
-            print('Decreased pencil size to '+ str(pencil_thick)+'\n')
+        pencil_thick=max(1,(pencil_thick-2))
+        print('Decreased pencil size to '+ str(pencil_thick)+'\n')
 
         # increase pencil size
     elif key_input=='+':
-        if pencil_thick < 50:
-            pencil_thick += 5
-            print('Increased pencil size to '+ str(pencil_thick)+'\n')
+        pencil_thick=min(30,(pencil_thick+2))
+        print('Increased pencil size to '+ str(pencil_thick)+'\n')
 
         # save canvas 
     elif key_input=='w':
@@ -166,6 +165,7 @@ def repaint(frame, figures):
         
         elif step.type == "dot":        
             cv2.circle(frame, step.coord_final, 1, step.color,step.thickness) 
+    
 
 def windowSetup(frame):
     # dimensions for all windows
@@ -211,6 +211,134 @@ def square(event,x,y,image):
         end_point = (x, y)   
         cv2.rectangle(image, start_point, end_point, draw_color, 2)
 
+def getgrid(image):
+    """
+    function getgrid: compute the grid (division into zones) according to the image size, as well as the correlation
+                    between the numbers are the colors they represent
+        INPUT:
+            - image: original image, we will use its dimensions to figure out the coloring grid
+        OUTPUT:
+            - contours: the coloring zones the image is divided into
+            - numbers_to_colors: a list of colors; the index i of a color in this list means that, in the zone
+                                coloring mode, that color corresponds to zones with the number i+1
+    """
+
+    h,w,_ = image.shape
+    grid = np.zeros([h,w],dtype=np.uint8)
+
+    # coloring zones are a grid
+
+    grid[h-1,:] = 255
+    grid[:,w-1] = 255
+
+    for y in range(0,h,int(h/3)):
+        grid[y,:] = 255
+    for x in range(0,w,int(w/4)):
+        grid[:,x] = 255
+
+    grid = cv2.bitwise_not(grid)
+
+    # contours of each zone
+    contours, _ = cv2.findContours(grid, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    numbers_to_colors = [(0,0,255), (0,255,0), (255,0,0)]
+    shuffle(numbers_to_colors)
+
+    return contours, numbers_to_colors
+
+def colorswindow(numbers_to_colors, accuracy=None):
+    """
+    function colorswindow: works out what to display on the small colors window for the zone coloring mode,
+                        where it informs the user which number corresponds to which color, and eventually the
+                        accuracy of the last coloring
+        INPUT:
+            - numbers_to_colors: a list of colors; the index i of a color in this list means that, in the zone
+                                coloring mode, that color corresponds to zones with the number i+1
+            - accuracy: the accuracy of the last coloring, to be displayed on the small colors window
+        OUTPUT:
+            - bg: final image to be displayed on the colors window
+    """
+
+    bg = np.zeros([300,350,3],dtype=np.uint8)
+
+    for i in range(3):
+        color = 'red' if numbers_to_colors[i]==(0,0,255) else ('green' if numbers_to_colors[i]==(0,255,0) else 'blue')
+        cv2.putText(bg, str(i+1) + ' - ' + color, (50, 50+50*i), cv2.FONT_HERSHEY_SIMPLEX, 0.9, numbers_to_colors[i], 2)
+
+    if accuracy!=None:
+        cv2.putText(bg, 'Accuracy: ' + str(accuracy) + '%', (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,255,255), 2)
+    
+    return bg
+
+def calc_accuracy(image, contours, zone_numbers, numbers_to_colors):
+    """
+    function calc_accuracy: calculates the accuracy of a given coloring in the zones coloring mode
+        INPUT:
+            - image: the painted frame which we want to examine for the accuracy of its painting
+            - contours: the zones into which the initial frame was divided for coloring
+            - zone_numbers: the numbers randomly attributed to each zone
+            - numbers_to_colors: a list of colors; the index i of a color in this list means that, in the zone
+                                coloring mode, that color corresponds to zones with the number i+1
+        OUTPUT:
+            - [return value]: final accuracy value, rounded to be an int
+    """
+
+    h,w,_ = image.shape
+    total_pixels = h*w
+
+    right_pixels = 0 # this will hold the number of pixels with the correct color
+    # for each zone...
+    for i in range(len(contours)):
+
+        c = contours[i]                             # the zone
+        zone_number = zone_numbers[i]               # the zone number
+        color = numbers_to_colors[zone_number-1]    # the zone color
+
+        # corners of this zone (zones are always rectangles)
+        minX = c[0][0][0]
+        maxX = c[2][0][0]
+        minY = c[0][0][1]
+        maxY = c[1][0][1]
+
+        _,_,depth = image.shape
+
+        # evaluate each pixel
+        for pixel_row in image[minY:maxY, minX:maxX, 0:depth]:
+            for pixel in pixel_row:
+                pixel = (pixel[0], pixel[1], pixel[2])
+                right_pixels += 1 if pixel==color else 0
+
+    # compute accuracy
+    return int((right_pixels/total_pixels)*100)
+
+def contours(original, contours, numbers):
+    """
+    function findcontours: apply the grid to the image and distribute coloring numbers among the different
+                        coloring zones
+        INPUT:
+            - original: original image where we will lay the grid
+            - contours: grid to be applied
+            - numbers: array of random numbers to be distributed among the zones
+        OUTPUT:
+            - [return value]: original image with grid and coloring numbers laid out
+    """
+
+    # grid and numbers will be white
+    color = (255,255,255)
+
+    for i in range(len(contours)):
+        c = contours[i]
+
+        x,y,w,h = cv2.boundingRect(c)
+        cX = int(x + w/2)
+        cY = int(y + h/2)
+
+        # write the numbers in each zone
+        cv2.putText(original, str(numbers[i]), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+
+    # draw the contours and return the result
+    return cv2.drawContours(original, contours, -1, color, 3)
+
 class Shapes:
 
     def __init__(self,type,origin,final,colour,thickness):
@@ -233,8 +361,7 @@ class Mouse:
             self.pressed = True
         elif event == cv2.EVENT_LBUTTONUP:
             self.pressed = False
-               
-          
+                    
 def main():
     global draw_color, pencil_thick,shake_limit
     
@@ -266,15 +393,16 @@ def main():
     
     draws = []
     draw_mode = False
+    color_zones=False
 
     ## Operação em contínuo ##
     while True:
-        _,frame = capture.read()
+        ret,frame = capture.read()
         #frame_sized=cv2.resize(frame,(int(frame.shape[0]*0.6),int(frame.shape[1]*0.6)))
         frame_flip = cv2.flip(frame, 1)
         cv2.imshow(camera_window,frame_flip)
 
-        if ucm: 
+        if ucm:  
             drawing_canvas = frame_flip
         else:
             drawing_canvas = drawing_cache
@@ -291,14 +419,13 @@ def main():
         if not umm:    
             cx,cy,frame_test = get_centroid(frame_mask)
             cv2.imshow(mask_window, frame_test)
-            print(str(cx))
             image_copy=drawing_canvas.copy()
-            cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-            cv2.imshow(drawing_window,image_copy)
-            
-
+            try:
+                cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+                cv2.imshow(drawing_window,image_copy)
+                
+            except: (cx,cy)==(None,None)
         else:
-            
             cx = mouse.coords[0]
             cy = mouse.coords[1]
             
@@ -307,19 +434,45 @@ def main():
                 cv2.line(image_copy, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
                 cv2.line(image_copy, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
                 cv2.imshow(drawing_window,image_copy)
+       
+        '''
+             # if we're in coloring mode
+        if color_zones:
+            # display the grid and numbers
+            frame = contours(drawing_canvas, zones, color_numbers)
 
+            # setting up the window the coloring accuracy
+            
+            color_window = 'Color map'
+            cv2.namedWindow(color_window, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(color_window, (300,350))
+            cv2.moveWindow(color_window, 800, 600)
+            
+            # show the colors to be used
+            stats = colorswindow(numbers_to_colors)
+            cv2.imshow(drawing_canvas, stats)
+        '''
 
         k = cv2.waitKey(1) & 0xFF
-
         key = str(chr(k))
+
         if not key_press(key,drawing_canvas): 
-            print('Program interrupted\n')
             break
 
-        if key == "d":
+        if key == "p":
             draw_mode = not draw_mode
             (prev_cx,prev_cy) = (None,None)
-            print('\n')
+
+            if draw_mode:
+                print('Back to drawingm...\n')
+            else: 
+                print('Drawing paused...\n')
+            
+        elif key == 'c':
+            draws = []
+            drawing_canvas.fill(255)
+            prev_cx,prev_cy = cx,cy
+            print('New canvas\n')
 
         elif key == " ":
             draw_mode= True
@@ -336,24 +489,57 @@ def main():
         elif key == "l":
             ucm= not ucm
             print('Camera as canvas mode: '+ str(ucm)+'\n')
+        '''
+        elif key=='t':
+            # if we're activating coloring mode
+            if not color_zones:
+
+                # clear canvas
+                draws = []
+                (prev_cx,prev_cy) = (None,None)
+
+                # compute the grid (division into zones) and correlation between the numbers are the 
+                # colors they represent
+                zones, numbers_to_colors = getgrid(frame_flip)
+                num_zones = len(zones) # number of coloring zones
+
+                # create array of random numbers between 1 and 3, with as many numbers as there are
+                # coloring zones; these will later be distributed among the zones; the numbers go from 1
+                # to 3 because we can only use three colors (red, blue and green)
+                color_numbers = []
+                for _ in range(num_zones):
+                    color_numbers.append(randint(1,3)) # we have three colors
+
+            else:
+                accuracy = calc_accuracy(frame_flip, zones, color_numbers, numbers_to_colors)
+                stats = colorswindow(numbers_to_colors, accuracy)
+                cv2.imshow(drawing_canvas, stats)
+            
+            # update the mode indicator
+            color_zones = not color_zones
+
+            if color_zones:
+                print('Teste de pintura\n')
+            else: print('Teste de pintura desativado\n')
+        '''
         
         if draw_mode :
             if (cx,cy) != (None,None):
+                
                 if key == "s":
-                    draws[len(draws)-1] = (Shapes("square",(cox,coy),(cx,cy),draw_color,pencil_thick))
-                    prev_cx,prev_cy = cx,cy
-                    #cv2.imshow(drawing_window,square(event,cx,cy,drawing_canvas))
+                    draws[-1] = (Shapes("square",(cX,cY),(cx,cy),draw_color,pencil_thick))  
                     print('Square draw\n')
-
+                        
+                    
                 elif key == "o":
-                    draws[len(draws)-1] = (Shapes("circle",(cox,coy),(cx,cy),draw_color,pencil_thick))
+                    draws[-1] = (Shapes("circle",(cX,cY),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
                     print('Circle draw\n')
 
                 elif key == "e":
                     image_copy=drawing_canvas.copy()
                     
-                    draws[len(draws)-1] = (Shapes("ellipse",(cox,coy),(cx,cy),draw_color,pencil_thick))
+                    draws[-1] = (Shapes("ellipse",(cX,cY),(cx,cy),draw_color,pencil_thick))
                     prev_cx,prev_cy = cx,cy
                     print('Ellipse draw\n')
 
@@ -362,6 +548,7 @@ def main():
                     drawing_canvas.fill(255)
                     prev_cx,prev_cy = cx,cy
                     print('New canvas\n')
+
                 else:
                     try:
                         if usp and (prev_cx,prev_cy) != (None,None):
@@ -377,15 +564,16 @@ def main():
                         prev_cx, prev_cy = cx,cy
 
                 if k == 0xFF:
-                    cox,coy = cx,cy
+                    cX,cY = cx,cy
                     prev_cx,prev_cy = cx,cy
                     
             repaint(drawing_canvas,draws)
+          
             
-        cv2.imshow( drawing_window,drawing_canvas)
+        cv2.imshow( camera_window,drawing_canvas)
 
     capture.release()
-    cv2.destroyAllWindows()
+    
 
 
 

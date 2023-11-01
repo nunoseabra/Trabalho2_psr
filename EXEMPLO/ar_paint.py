@@ -159,7 +159,7 @@ def main():
                 origin = figure_cache.origin if figure_cache else pencil_coords
 
                 # update the figure cache with the figure's new positioning
-                if figure_mode=='square':
+                if   figure_mode=='square':
                     figure_cache = Square(origin, pencil_coords, draw_color, draw_thickness)
                 elif figure_mode=='ellipse':
                     figure_cache = Ellipse(origin, pencil_coords, draw_color, draw_thickness)
