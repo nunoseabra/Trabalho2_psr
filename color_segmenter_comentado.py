@@ -112,8 +112,7 @@ def selectPrint(color_data):
         print('Selected Threshold ' + str(max_g) + ' for limit Gmax')
     elif max_r != prev_maxr:
         print('Selected Threshold ' + str(max_r) + ' for limit Rmax')
-
-
+        
 # Function to update window
 def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
     # Updates previous trackbar value
@@ -150,16 +149,8 @@ def savefile(min_b, min_g, min_r, max_b, max_g, max_r):
     limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 'G': {'min': min_g, 'max': max_g},'R': {'min': min_r, 'max': max_r}}}
         
         # Save limits in a JSON file
-        
-        
-
-    json_object = json.dumps(limits, indent=4)
-
-    with open("limits.json", "w") as outfile:
-        outfile.write(json_object)
-
-    print('Saved.....') 
-
+    with open('limits.json', 'w') as file:
+             json.dump(limits,file)
 
 #--------- MAIN FUNCTION ---------#
 
@@ -194,7 +185,7 @@ def main():
             savefile(min_b, min_g, min_r, max_b, max_g, max_r)
             print('\n Limits Saved.....\n ')
             break
-        elif key == ord('d'): 
+        elif key == ord('c'): 
             print('\n Interrupted.....\n ')
             break
         

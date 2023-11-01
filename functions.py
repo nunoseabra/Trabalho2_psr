@@ -21,6 +21,10 @@ import numpy as np
 from math import sqrt
 from datetime import datetime
 
+draw_color = (0,0,255)
+pencil_thick = 5
+shake_limit=100
+
 def initialization():
     # Input Arguments
     parser = argparse.ArgumentParser(description='Ar Paint ')
@@ -60,6 +64,7 @@ def limitsRead(file_path):
     return limits
 
 def get_centroid(mask) :
+    global draw_color
     # find all contours (objects)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     
@@ -88,8 +93,8 @@ def get_centroid(mask) :
 
         # draw small red cross to indicate the centroid point
         if cX: # it's enough to check either cX or cY, if one is None then both are None
-            cv2.line(image_result, (cX-8, cY-8), (cX+8, cY+8), (0, 0, 255), 5)
-            cv2.line(image_result, (cX+8, cY-8), (cX-8, cY+8), (0, 0, 255), 5)
+            cv2.line(image_result, (cX-8, cY-8), (cX+8, cY+8), draw_color, 5)
+            cv2.line(image_result, (cX+8, cY-8), (cX-8, cY+8), draw_color, 5)
     
     # if we don't detect any objects, we just show the mask as it is
     else:
