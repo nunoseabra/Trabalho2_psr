@@ -6,8 +6,8 @@
 # Trabalho nº2 - Augmented Reality Paint
 
 # Maria Rodrigues, nº 102384
-# Nuno Seabra, nº
-# Ricardo Baptista, nº
+# Nuno Seabra, nº 102889
+# Ricardo Baptista, nº 40170
 
 
 #--------- IMPORT FUNCTIONS ---------#
@@ -17,7 +17,8 @@ import argparse
 from random import randint, shuffle
 import sys
 from colorama import Fore, Style
-import cv2
+import cv2 
+import pyautogui
 import numpy as np
 from math import sqrt
 from datetime import datetime
@@ -66,9 +67,10 @@ def init():
     # Argparser arguments
     parser.add_argument('-j','--json',type = str, required= False , help='Full path to json file', default='limits.json')
     parser.add_argument('-usp','--use_shake_prevention', action='store_true', help='Use shake prevention mode')
-    parser.add_argument('-ucc','--use_cam_mode', action='store_true', help='Use camera frame as canvas')
+    parser.add_argument('-ucm','--use_cam_mode', action='store_true', help='Use camera frame as canvas')
     parser.add_argument('-umm','--use_mouse_mode', action='store_true', help='Use mouse as pencil')
     parser.add_argument('-utm','--use_test_mode', action='store_true', help='Paint a matrix by number')
+    parser.add_argument('-ufm','--use_figure_mode', action='store_true', help='Draw figures')
 
     args = vars(parser.parse_args())
 
@@ -77,22 +79,25 @@ def init():
     usp = args['use_shake_prevention']                              # Use shake prevention mode
     ucm = args['use_cam_mode']                                      # Use video as canvas
     umm = args['use_mouse_mode']                                    # Use mouse as pencil
-    utm = args['use_test_mode']                                     # Paint by numbers
+    utm = args['use_test_mode']  
+    ufm = args['use_figure_mode']                                    # Paint by numbers
 
     # Mode description - modes used
-    print('\n Drawing modes:')
+    print(Fore.CYAN+'\nDrawing modes:'+ Style.RESET_ALL)
     if usp:                                                         # If usp is active prints message
-        print('Shake prevention mode')
+        print(Fore.CYAN+'-Shake prevention mode'+ Style.RESET_ALL)
     if ucm:                                                         # If ucm is active prints message
-        print('Camera as canvas mode')
+        print(Fore.CYAN+'-Camera as canvas mode'+ Style.RESET_ALL)
     if umm:                                                         # If umm is active prints message
-        print('Mouse mode')
-    if (not usp) and (not ucm) and (not umm):                       # If no mode is active let's user know default mode is active
-        print('Default Mode')
-    print()
+        print(Fore.CYAN+'-Mouse mode'+ Style.RESET_ALL)
     if utm:
-        print('Paint by numbers test mode')                         # If utm is active prints message
-    return file_path , usp, ucm, umm, utm
+        print(Fore.CYAN+'-Paint by numbers test mode'+ Style.RESET_ALL)                         # If utm is active prints message
+    if ufm:
+        print(Fore.CYAN+'-Draw figures mode'+ Style.RESET_ALL)                                  # If ufm is active prints message
+    if not(usp) and not (ucm)and not (umm) and not (utm) and not (ufm):
+        print(Fore.CYAN+'-Default'+ Style.RESET_ALL)                                                      
+    print()
+    return file_path , usp, ucm, umm, utm,ufm
 
 
 # Function to get RGB limits
@@ -155,28 +160,39 @@ def get_centroid(mask):
 
 # Defines key functions to change color, size and format of the pencil 
 def key_press(key_input,canvas):
-    global draw_color, pencil_thick
+    global draw_color, pencil_thick,draws,mode
 
     # If key is preesed:
     if key_input=='r':                              # Red
         draw_color = (0,0,255)
-        print('Pencil is RED'+'\n')
+        print('Pencil is '+Fore.RED+'RED'+Style.RESET_ALL+'\n')
         
     elif key_input=='g':                            # Green
         draw_color = (0,255,0)
-        print('Pencil is GREEN'+'\n')
+        print('Pencil is '+Fore.GREEN+'GREEN'+Style.RESET_ALL+'\n')
 
     elif key_input=='b':                            # Blue
         draw_color = (255,0,0)
-        print('Pencil is BLUE'+'\n')
+        print('Pencil is '+Fore.BLUE + 'BLUE'+Style.RESET_ALL+'\n')
 
     elif key_input=='-':                            # Decrease pencil size
         pencil_thick=max(1,(pencil_thick-2))
-        print('Decreased pencil size to '+ str(pencil_thick)+'\n')
+        print('Decreased pencil size to '+Fore.CYAN+ str(pencil_thick)+Style.RESET_ALL+'\n')
 
     elif key_input=='+':                            # Increase pencil size
         pencil_thick=min(30,(pencil_thick+2))
-        print('Increased pencil size to '+ str(pencil_thick)+'\n')
+        print('Increased pencil size to '+ Fore.CYAN+ str(pencil_thick)+Style.RESET_ALL+'\n')
+    elif key_input == "o":                                                                # If 'o' pressed draws circle
+        mode='circle'
+        print(Fore.CYAN+'Circle\n'+Style.RESET_ALL)
+
+    elif key_input == "e":                                                                # If 'e' pressed draws ellipse
+        mode='ellipse'
+        print(Fore.CYAN+'Ellipse\n'+Style.RESET_ALL)    
+
+    elif key_input == "s":                                                                # If 'e' pressed draws square
+        mode='square'
+        print(Fore.CYAN+'Square\n'+Style.RESET_ALL)   
 
     elif key_input=='w':                            # Saves canva in dated file
         # Gets current date and time
@@ -187,43 +203,18 @@ def key_press(key_input,canvas):
         # Creates file
         cv2.imwrite(name_canvas, canvas)
         cv2.imwrite(name_canvas_colored, canvas)
-        print('Your draw was saved!\n')
+        print(Fore.GREEN+'Your draw was saved!\n'+Style.RESET_ALL)
 
     elif key_input=='q':                            # Quits program
-        print('Program interrupted!\n')
+        print(Fore.RED+'Program interrupted!\n'+Style.RESET_ALL)
         return False
     
     return True
 
 
-# Function to draw shapes
-def shapesFunc(frame, figures):
-    for step in figures:
-        if step.type == "square":                                                                   # Draw squares
-            cv2.rectangle(frame,step.coord_origin,step.coord_final,step.color,step.thickness)
-        
-        elif step.type == "circle":                                                                 # Draw circles
-            difx = step.coord_final[0] - step.coord_origin[0]
-            dify = step.coord_final[1] - step.coord_origin[1]
-            radious = round(sqrt(difx**2 + dify**2))
-            cv2.circle(frame,step.coord_origin,radious,step.color,step.thickness) 
-
-        elif step.type == "ellipse":                                                                # Draw elipse
-            meanx = (step.coord_final[0] - step.coord_origin[0])/2                                  # Mean for x coordinate
-            meany = (step.coord_final[1] - step.coord_origin[1])/2                                  # Mean for y coordinate
-            center = (round(meanx + step.coord_origin[0]), round(meany + step.coord_origin[1]))     # Defines center
-            axes = (round(abs(meanx)), round(abs(meany)))
-            cv2.ellipse(frame,center,axes,0,0,360,step.color,step.thickness)
-        
-        elif step.type == "line":                                                                   # Draw line
-            cv2.line(frame, step.coord_origin,step.coord_final, step.color,step.thickness)
-        
-        elif step.type == "dot":                                                                    # Draw dot
-            cv2.circle(frame, step.coord_final, 1, step.color,step.thickness) 
-    
-
 # Function to configure windows
 def windowSetup(frame):
+    global image
     # Window dimentions and scale
     scale = 0.6
     window_width = int(frame.shape[1]* scale)
@@ -249,113 +240,74 @@ def windowSetup(frame):
     cv2.moveWindow(mask_window, 1000, 100)
     cv2.moveWindow(drawing_window, 1000, 600)
 
+    image=np.full((window_width,window_height,3),0,dtype=np.uint8)
+
     drawing_cache = np.full((window_height,window_width,3),255,dtype=np.uint8)
+
     return camera_window,mask_window,drawing_window,drawing_cache
+    
+# Function to draw shapes
+def shapesFunc(frame, figures):
+    for step in figures:
+       
+        if  step.type == "line":                                                                   # Draw line
+            cv2.line(frame, step.coord_origin,step.coord_final, step.color,step.thickness)
+        
+        elif step.type == "dot":                                                                    # Draw dot
+            cv2.circle(frame, step.coord_final, 1, step.color,step.thickness) 
+    return frame
 
-
-# Function to define squares   
-def square(event,x,y,image):
-    if event == cv2.EVENT_LBUTTONDOWN:  # For key mode  - key down, start point
+def draw_shape(event,x,y,flags, param):
+    global mode,draw_color,image,drawing,start_point,end_point,drawing_shapes
+    
+    
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawing = True
         start_point = (x, y)
+        
+    elif event == cv2.EVENT_MOUSEMOVE:
+        if drawing:
+            if mode == 'circle':
+                image_copy =image.copy()
+                radius = int(np.sqrt((x - start_point[0]) ** 2 + (y - start_point[1]) ** 2))
+                cv2.circle(image_copy, start_point, radius, draw_color, 2)
+                cv2.imshow(drawing_shapes, image_copy)
+
+            elif mode == 'square':
+                image_copy =image.copy()
+                cv2.rectangle(image_copy, start_point, (x, y), draw_color, 2)
+                cv2.imshow(drawing_shapes, image_copy)
+            
+            elif mode == 'ellipse':
+                image_copy =image.copy()
+                # Calcule o tamanho da elipse
+                a = abs(x - start_point[0])
+                b = abs(y - start_point[1])
+                # Desenhe a elipse
+                cv2.ellipse(image_copy, start_point, (a, b), 0, 0, 360, draw_color, 2)
+                cv2.imshow(drawing_shapes, image_copy)
+            elif mode == 'break':
+                pass
+    elif event == cv2.EVENT_LBUTTONUP:
+        drawing = False
+        end_point = (x, y)
+        if mode == 'circle':
+            radius = int(np.sqrt((end_point[0] - start_point[0]) ** 2 + (end_point[1] - start_point[1]) ** 2))
+            cv2.circle(image, start_point, radius, draw_color, 2)
+
+        elif mode == 'square':
+            cv2.rectangle(image, start_point, end_point, draw_color, 2)
+
+        elif mode == 'ellipse':
+            #image_copy = image.copy()
+            a = abs(end_point[0] - start_point[0])
+            b = abs(end_point[1] - start_point[1])
+            cv2.ellipse(image, start_point, (a, b), 0, 0, 360, draw_color, 2)
+        elif mode == 'break':
+                mode='circle'
+        
+    #cv2.imshow('window', image)
     
-    elif event == cv2.EVENT_LBUTTONUP:  # For key mode - key up, draws 
-        end_point = (x, y)   
-        cv2.rectangle(image, start_point, end_point, draw_color, 2)
-
-    elif event == cv2.EVENT_MOUSEMOVE:  # For mouse mode
-        image_copy=image.copy()
-        cv2.rectangle(image_copy, start_point, (x, y), draw_color, 2)
-
-    
-# Function to divide image in a grid to paint and define color zones (a grid)
-def getgrid(image):
-    # Initizalizing grid
-    h,w,_ = image.shape
-    grid = np.zeros([h,w],dtype=np.uint8)
-    grid[h-1,:] = 255
-    grid[:,w-1] = 255
-    
-    # Initializing color numbers
-    numbers_to_colors = [(0,0,255), (0,255,0), (255,0,0)]
-    shuffle(numbers_to_colors)
-
-    # Scaling and defining grid
-    for y in range(0,h,int(h/3)):
-        grid[y,:] = 255
-    for x in range(0,w,int(w/4)):
-        grid[:,x] = 255
-    grid = cv2.bitwise_not(grid)
-
-    # Gets contours
-    contours, _ = cv2.findContours(grid, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    return contours, numbers_to_colors
-
-
-# Function to get the contours and associate each one with a retangular zone
-def contours(original, contours, numbers):
-    # Initialize color associacion 
-    color = (255,255,255)
-
-    for i in range(len(contours)):                              # For each zone (every contour represents a zone)
-        c = contours[i]
-
-        x,y,w,h = cv2.boundingRect(c)
-        cX = int(x + w/2)
-        cY = int(y + h/2)
-
-        # Number the zones
-        cv2.putText(original, str(numbers[i]), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
-
-    return cv2.drawContours(original, contours, -1, color, 3)
-
-
-# Function to attribute a color to a grid space and number
-def colorswindow(numbers_to_colors, accuracy=None):
-    # Initialize image
-    bg = np.zeros([300,350,3],dtype=np.uint8)
-
-    # Associates color to space
-    for i in range(3):
-        color = 'red' if numbers_to_colors[i]==(0,0,255) else ('green' if numbers_to_colors[i]==(0,255,0) else 'blue')
-        cv2.putText(bg, str(i+1) + ' - ' + color, (50, 50+50*i), cv2.FONT_HERSHEY_SIMPLEX, 0.9, numbers_to_colors[i], 2)
-
-    # Accuracu of the painting
-    if accuracy!=None:
-        cv2.putText(bg, 'Accuracy: ' + str(accuracy) + '%', (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,255,255), 2)
-    
-    return bg
-
-
-# Function to calculate accuracy
-def calc_accuracy(image, contours, zone_numbers, numbers_to_colors):
-    # Initializes matrix pixels
-    h,w,_ = image.shape
-    total_pixels = h*w                                          # Total number of pixels
-    right_pixels = 0                                            # Number of correctly painted pixels
-    
-    for i in range(len(contours)):                              # For each zone (every contour represents a zone)
-        c = contours[i]                                         # Reads zone
-        zone_number = zone_numbers[i]                           # Zone number, for that zone
-        color = numbers_to_colors[zone_number-1]                # Zone color, for that zone
-
-        # Corners of retangular zone
-        minX = c[0][0][0]
-        maxX = c[2][0][0]
-        minY = c[0][0][1]
-        maxY = c[1][0][1]
-
-        _,_,depth = image.shape
-
-        # Evalueates if the pixel was colored right
-        for pixel_row in image[minY:maxY, minX:maxX, 0:depth]:
-            for pixel in pixel_row:
-                pixel = (pixel[0], pixel[1], pixel[2])           # Gets the color of the pixel
-                right_pixels += 1 if pixel==color else 0         # If the color is right increments counter
-
-    # Approval rate is calculated in %
-    return int((right_pixels/total_pixels)*100)
-
 
 #--------- PAINT BY NUMBERS RELATED FUNCTIONS ---------#
 
@@ -412,323 +364,304 @@ def main():
     global draw_color, pencil_thick,shake_limit
  
     # Calling initialization function
-    file,usp,ucm,umm,utm = init()
+    file,usp,ucm,umm,utm ,figure= init()
 
     # Initializing drawing
     draws = []
     draw_mode = False
+     
+    if figure:
+        # Printing usage information
+        print('Press '+ Fore.CYAN + 'c'+Style.RESET_ALL + ' to draw circles, '+Fore.CYAN+ 's'+ Style.RESET_ALL + ' to draw squares and '+Fore.CYAN+ 'e'+ Style.RESET_ALL + ' to draw ellipses!\n')
+        print('To change color press '+ Fore.RED + 'r'+Style.RESET_ALL + ' for RED, '+Fore.GREEN+ 'g'+ Style.RESET_ALL + ' for GREEN and '+Fore.BLUE+ 'b'+ Style.RESET_ALL + ' for BLUE!\n')
+        print('To clear canvas press '+ Fore.CYAN + 'c '+Style.RESET_ALL + '!\n')
+        print('To cancel shape press '+ Fore.CYAN + 'k '+Style.RESET_ALL + '!\n')
+        print('To save your draw press '+ Fore.CYAN + 'w '+Style.RESET_ALL + '!\n')
+        print('To quit press '+ Fore.CYAN + 'q '+Style.RESET_ALL + '!\n')
 
-    # Printing usage information
-    print('To activate/deactivate modes:\n')
-    print('Shake prevention - press '+Fore.CYAN+ 'n'+ Style.RESET_ALL + ' \n')
-    print('Camera as canvas - press '+Fore.CYAN+ 'l'+ Style.RESET_ALL + ' \n')
-    print('Mouse mode - press '+Fore.CYAN+ 'm'+ Style.RESET_ALL + ' \n')
-    print('Press '+ Fore.CYAN + 'SPACE'+Style.RESET_ALL + ' to start drawing and '+Fore.CYAN+ 'd'+ Style.RESET_ALL + ' to pause!\n')
+        global mode,image,drawing,start_point,end_point,drawing_shapes #variaveis globais para o modo shapes
+
+        mode = 'circle'  # Inicialmente, o modo é definido para círculo
+        start_point = (0, 0)
+        end_point = (0, 0)
+        image=np.full((700, 1000,3),0, dtype=np.uint8)
+        drawing=False
+
+        drawing_shapes='windowww'
+        cv2.namedWindow(drawing_shapes)
+        cv2.resizeWindow(drawing_shapes, (1000, 700))
+        cv2.moveWindow(drawing_shapes, 500, 200)
+
+        while True:
+            
+
+            cv2.setMouseCallback(drawing_shapes, draw_shape)   #desenha a figura selecionada com recurso ao mouse  
+            cv2.imshow(drawing_shapes,image)
+
+            # Reads key
+            k = cv2.waitKey(1) & 0xFF
+            key = str(chr(k))
+
+            if key=='c':          #New canvas for shapes
+                image.fill(0)
+                print(Fore.YELLOW+'New canvas\n'+Style.RESET_ALL)
+
+            elif key=='k':
+                mode='break'
+                print(Fore.YELLOW+'Canceled...back to circle mode\n'+Style.RESET_ALL)
+
+            # Safety measure if key is not pressed
+            elif not key_press(key,image): 
+                break
+
+            
+        
+    else:
+        # Printing usage information
+        print('To activate/deactivate modes:\n')
+        print('Shake prevention - press '+Fore.CYAN+ 'n'+ Style.RESET_ALL + ' \n')
+        print('Camera as canvas - press '+Fore.CYAN+ 'l'+ Style.RESET_ALL + ' \n')
+        print('Mouse mode - press '+Fore.CYAN+ 'm'+ Style.RESET_ALL + ' \n')
+        print('To change color press '+ Fore.RED + 'r'+Style.RESET_ALL + ' for RED, '+Fore.GREEN+ 'g'+ Style.RESET_ALL + ' for GREEN and '+Fore.BLUE+ 'b'+ Style.RESET_ALL + ' for BLUE!\n')
+        print('Press '+ Fore.CYAN + 'SPACE'+Style.RESET_ALL + ' to start drawing and '+Fore.CYAN+ 'p'+ Style.RESET_ALL + ' to pause!\n')
+        print('To clear canvas press '+ Fore.CYAN + 'c '+Style.RESET_ALL + '!\n')
+        print('To save your draw press '+ Fore.CYAN + 'w '+Style.RESET_ALL + '!\n')
+        print('To quit press '+ Fore.CYAN + 'q '+Style.RESET_ALL + '!\n')
+
+
+        # Calling limits function
+        limits = getLimits(file) 
+
+        # Open video and windows
+        capture = cv2.VideoCapture(0)
+        _, frame = capture.read()
     
-    # Calling limits function
-    limits = getLimits(file) 
+        # Getting limints
+        low_limits = (limits['B']['min'], limits['G']['min'], limits['R']['min'])
+        high_limits = (limits['B']['max'], limits['G']['max'], limits['R']['max'])
 
-    # Open video and windows
-    capture = cv2.VideoCapture(0)
-    _, frame = capture.read()
-    camera_window, mask_window, drawing_window, drawing_cache = windowSetup(frame)
-
-    # Showing windows
-    cv2.imshow( camera_window,frame)
-    cv2.imshow(drawing_window,drawing_cache)
-
-    # Getting limints
-    low_limits = (limits['B']['min'], limits['G']['min'], limits['R']['min'])
-    high_limits = (limits['B']['max'], limits['G']['max'], limits['R']['max'])
-
-    # Reading mouse callback
-    mouse = Mouse()
-    cv2.setMouseCallback(drawing_window, mouse.update_mouse)
+        camera_window, mask_window, drawing_window, drawing_cache = windowSetup(frame)
     
-    while True:
+        # Showing windows
+        cv2.imshow(camera_window,frame)
+        cv2.imshow(drawing_window,drawing_cache)
 
-        #----------- INITIALIZING MAIN
-
-        ret,frame = capture.read()
-        
-        # Flip frame to get accurate image for easy access
-        frame_flip = cv2.flip(frame, 1)
-        cv2.imshow(camera_window,frame_flip)
-
-        #----------- FREE DRAWING MODE
-
-        # Activating camera mode
-        if ucm:  
-            drawing_canvas = frame_flip
-        else:
-            drawing_canvas = drawing_cache
-        
-        # Frames and showing mask
-        frame_mask = cv2.inRange(frame_flip, low_limits, high_limits)
-        frame_wMask = cv2.bitwise_and(frame_flip,frame_flip, mask = frame_mask)
-        cv2.imshow(mask_window,frame_wMask)
-        
-        # Getting centroid
-        cx,cy,frame_centroid= get_centroid(frame_mask)
-        cv2.imshow( mask_window, frame_centroid)
-
-        # Defining use mouse mode usage
-        if not umm:                                         # Not using mouse mode
-            cx,cy,frame_test = get_centroid(frame_mask)
-            cv2.imshow(mask_window, frame_test)
-            image_copy=drawing_canvas.copy()
-            try:
-                cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-                cv2.imshow(drawing_window,image_copy)
-                
-            except: (cx,cy)==(None,None)                    # If coordenates are none type, stops
-        else:                                               # Using mouse mode
-            cx = mouse.coords[0]
-            cy = mouse.coords[1]
-            
-            if cx:                                          # If cx is not none, draws
-                image_copy=drawing_canvas.copy()
-                cv2.line(image_copy, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
-                cv2.line(image_copy, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
-                cv2.imshow(drawing_window,image_copy)
-
-        #----------- TEST MODE
-
-        # Open Test Mode Window
         if utm:
-            cv2.destroyAllWindows()
-
-            # Creating matrix for test
-            grid_size = 5
-            canvas_size = 500
-
-            # Generating both colored and correspondent grey matrix
-            colored_canvas, colored_numbers = create_colored_matrix(grid_size, canvas_size)
-            drawing_window = create_grey_matrix(colored_numbers, grid_size, canvas_size)
-
-            # Showing grey matrix 
-            cv2.imshow("Grey Matrix", image_copy)
-            stop = str(chr(cv2.waitKey(1)))
-
-            # Ending the test
-            if stop == 'q':
-                print('The test has ended!')
-                # Showing correct matrix
-                cv2.imshow("Colored Matrix", colored_canvas)
-
-            # Drawing and painting matrix
-            cx,cy,frame_test = get_centroid(frame_mask)
-            cv2.imshow(mask_window, frame_test)
-            image_copy=drawing_canvas.copy()
-
-            try:
-                cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-                cv2.imshow(drawing_window,image_copy)
+                # Creating matrix for test
+                grid_size = 5
+                canvas_size = 500
                 
-            except: (cx,cy)==(None,None)                    # If coordenates are none type, stops
-
-        
-
-        #----------- FREE DRAWING MODE
-
-        # Activating camera mode
-        if ucm:  
-            drawing_canvas = frame_flip
-        else:
-            drawing_canvas = drawing_cache
-        
-        # Frames and showing mask
-        frame_mask = cv2.inRange(frame_flip, low_limits, high_limits)
-        frame_wMask = cv2.bitwise_and(frame_flip,frame_flip, mask = frame_mask)
-        cv2.imshow(mask_window,frame_wMask)
-        
-        # Getting centroid
-        cx,cy,frame_centroid= get_centroid(frame_mask)
-        cv2.imshow( mask_window, frame_centroid)
-
-        # Defining use mouse mode usage
-        if not umm:                                         # Not using mouse mode
-            cx,cy,frame_test = get_centroid(frame_mask)
-            cv2.imshow(mask_window, frame_test)
-            image_copy=drawing_canvas.copy()
-            try:
-                cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-                cv2.imshow(drawing_window,image_copy)
+                # Generating both colored and correspondent grey matrix
+                colored_canvas, colored_numbers = create_colored_matrix(grid_size, canvas_size)
+                matrix = create_grey_matrix(colored_numbers, grid_size, canvas_size)
                 
-            except: (cx,cy)==(None,None)                    # If coordenates are none type, stops
-        else:                                               # Using mouse mode
-            cx = mouse.coords[0]
-            cy = mouse.coords[1]
+                # Showing grey matrix 
+                cv2.imshow(drawing_window, matrix)
+                stop = str(chr(cv2.waitKey(1)& 0xFF))
+        
+        i=1 #figure mode index draws      
+
+        # Reading mouse callback
+        mouse = Mouse()
+        cv2.setMouseCallback(drawing_window, mouse.update_mouse)
+        
+
+
+        while True:
+
+            #----------- INITIALIZING MAIN
+
+            ret,frame = capture.read()
             
-            if cx:                                          # If cx is not none, draws
+            # Flip frame to get accurate image for easy access
+            frame_flip = cv2.flip(frame, 1)
+            cv2.imshow(camera_window,frame_flip)
+
+            #----------- FREE DRAWING MODE
+
+            # Activating camera mode
+            if ucm:  
+                drawing_canvas = frame_flip
+            elif utm:
+                drawing_canvas = matrix
+            else:
+                drawing_canvas = drawing_cache
+
+            # Frames and showing mask
+            frame_mask = cv2.inRange(frame_flip, low_limits, high_limits)
+            frame_wMask = cv2.bitwise_and(frame_flip,frame_flip, mask = frame_mask)
+            cv2.imshow(mask_window,frame_wMask)
+            
+            # Getting centroid
+            cx,cy,frame_centroid= get_centroid(frame_mask)
+            cv2.imshow( mask_window, frame_centroid)
+
+            # Defining use mouse mode usage
+            if not umm:                                         # Not using mouse mode
+                cx,cy,frame_test = get_centroid(frame_mask)
+                cv2.imshow(mask_window, frame_test)
                 image_copy=drawing_canvas.copy()
-                cv2.line(image_copy, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
-                cv2.line(image_copy, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
-                cv2.imshow(drawing_window,image_copy)
-
-        #----------- TEST MODE
-
-        # Open Test Mode Window
-        if utm:
-            cv2.destroyAllWindows()
-
-            # Creating matrix for test
-            grid_size = 5
-            canvas_size = 500
-
-            # Generating both colored and correspondent grey matrix
-            colored_canvas, colored_numbers = create_colored_matrix(grid_size, canvas_size)
-            drawing_window = create_grey_matrix(colored_numbers, grid_size, canvas_size)
-
-            # Showing grey matrix 
-            cv2.imshow("Grey Matrix", drawing_window)
-            stop = str(chr(cv2.waitKey(1)))
-
-            # Ending the test
-            if stop == 'q':
-                print('The test has ended!')
-                # Showing correct matrix
-                cv2.imshow("Colored Matrix", colored_canvas)
-
-            # Drawing and painting matrix
-            cx,cy,frame_test = get_centroid(frame_mask)
-            cv2.imshow(mask_window, frame_test)
-            drawing_window=drawing_canvas.copy()
-
-            try:
-                cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
-                cv2.imshow(drawing_window,image_copy)
-                
-            except: (cx,cy)==(None,None)                    # If coordenates are none type, stops
-
-
-        #----------- ACCURACY OF TEST MODE
-
-
-        # Capture the user's drawing from the screen
-        user_drawing = cv2.captureScreen(region=(cx, cy, canvas_size))  # Adjust the region to capture the drawing area
-
-        # Convert the captured image to grayscale
-        user_drawing_gray = cv2.cvtColor(user_drawing, cv2.COLOR_BGR2GRAY)
-
-        # Ensure the dimensions match (resize if necessary)
-        user_drawing_gray = cv2.resize(user_drawing_gray, (user_drawing.shape[1], user_drawing.shape[0]))
-
-        # Threshold both images
-        _, user_binary = cv2.threshold(user_drawing_gray, 1, 255, cv2.THRESH_BINARY)
-        _, initial_binary = cv2.threshold(colored_canvas, 1, 255, cv2.THRESH_BINARY)
-
-        # Calculate pixel-wise difference
-        difference = cv2.bitwise_xor(user_binary, initial_binary)
-
-        # Accuracy %
-        total_pixels = initial_binary.size
-        differing_pixels = cv2.countNonZero(difference)
-        accuracy = 100 * (1 - differing_pixels / total_pixels)
-
-        print("Accuracy: {:.2f}%".format(accuracy))
-
-
-        #----------- READING INSTRUCTIONS AND DRAWING
-
-        # Reads key
-        k = cv2.waitKey(1)
-        key = str(chr(k))
-
-        # Safety measure if key is not pressed
-        if not key_press(key,drawing_canvas): 
-            break
-        
-        # If key pressed: 
-        if key == "p":                                      # Alternates between drawing mode
-            draw_mode = not draw_mode
-            (prev_cx,prev_cy) = (None,None)
-
-            if draw_mode:
-                print('Back to drawing...\n')
-
-            else: 
-                print('Drawing paused...\n')
-            
-        elif key == 'c':                                    # Clears canvas
-            draws = []
-            drawing_canvas.fill(255)
-            prev_cx,prev_cy = cx,cy
-            print('New canvas\n')
-
-        elif key == " ":                                    # Begins test
-            draw_mode= True
-            print('\n Drawing mode started! \n')
-
-        elif key == "m":                                    # Alternates between having or not mouse mode
-            umm= not umm
-            print('Mouse mode: '+ str(umm)+'\n')
-
-        elif key == "n":                                    # Alternates between having or not shake prevention mode
-            usp= not usp
-            print('Shake prevention mode: '+ str(usp)+'\n')
-
-        elif key == "l":                                    # Alternates between having or not canvas mode
-            ucm= not ucm
-            print('Camera as canvas mode: '+ str(ucm)+'\n')
-        
-        # If drawing mode is active
-        if draw_mode :
-            if (cx,cy) != (None,None): # If coordenates are different to none type
-                
-                if key == "s":                                                                  # If 's' pressed draws square
-                    draws[-1] = (Shapes("square",(cX,cY),(cx,cy),draw_color,pencil_thick))  
-                    print('Square draw\n')
-                        
-                elif key == "o":                                                                # If 'o' pressed draws circle
-                    draws[-1] = (Shapes("circle",(cX,cY),(cx,cy),draw_color,pencil_thick))
-                    prev_cx,prev_cy = cx,cy
-                    print('Circle draw\n')
-
-                elif key == "e":                                                                # If 'e' pressed draws ellipse
-                    image_copy=drawing_canvas.copy()
+                try:
+                    cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+                    cv2.imshow(drawing_window,image_copy)
                     
-                    draws[-1] = (Shapes("ellipse",(cX,cY),(cx,cy),draw_color,pencil_thick))
-                    prev_cx,prev_cy = cx,cy
-                    print('Ellipse draw\n')
+                except: (cx,cy)==(None,None)                    # If coordenates are none type, stops
+            else:                                               # Using mouse mode
+                cx = mouse.coords[0]
+                cy = mouse.coords[1]
+                
+                if cx:                                          # If cx is not none, draws
+                    image_copy=drawing_canvas.copy()
+                    cv2.line(image_copy, (cx-5, cy-5), (cx+5, cy+5), (0, 0, 255), 5)
+                    cv2.line(image_copy, (cx+5, cy-5), (cx-5, cy+5), (0, 0, 255), 5)
+                    cv2.imshow(drawing_window,image_copy)
 
-                elif key == 'c':                                                                # If 'c' pressed cleares canvas
-                    draws = []
-                    drawing_canvas.fill(255)
-                    prev_cx,prev_cy = cx,cy
-                    print('New canvas\n')
+            #----------- TEST MODE
 
-                else: # If not in drawing mode
-                    try:
-                        if usp and (prev_cx,prev_cy) != (None,None):                            # If use shake prevention mode
-                            diffX = abs(prev_cx - cx)
-                            diffY = abs(prev_cy - cy)
+            # Open Test Mode Window
+            if utm:
+                
+                # Fecha todas as janelas, exceto a drawing_window"
+                #cv2.destroyAllWindows()
+                #cv2.imshow(drawing_window, matrix)  # Exibe a janela específica que se deseja manter aberta
 
-                            if diffX>shake_limit or diffY>shake_limit:                          # If distance between points is bigger than shake limits, draws dot
-                                draws.append(Shapes("dot",(0,0),(prev_cx,prev_cy),draw_color,pencil_thick))
+            
 
-                            else:                                                               # Draws line if distance is acceptable
-                                draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
+                # Ending the test
+                if stop == 'q':
+                    print(Fore.YELLOW+'The test has ended!'+Style.RESET_ALL)
+                    # Showing correct matrix
+                    cv2.imshow("Colored Matrix", colored_canvas)
 
-                        elif (prev_cx,prev_cy) != (None,None):                                  # Draws line
-                                draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
+                # Drawing and painting matrix
+
+                cx,cy,frame_test = get_centroid(frame_mask)
+                cv2.imshow(mask_window, frame_test)
+                drawing_window=drawing_canvas.copy()
+
+                try:
+                    cv2.drawMarker(image_copy, (cx,cy) , draw_color, markerType=cv2.MARKER_CROSS, markerSize=10, thickness=2)
+                    cv2.imshow(drawing_window,image_copy)
+                    
+                except: (cx,cy)==(None,None)                    # If coordenates are none type, stops
+
+
+            #----------- ACCURACY OF TEST MODE
+
+                """
+            # Capture the user's drawing from the screen
+            #user_drawing = cv2.captureScreen(region=(cx, cy, canvas_size,canvas_size))  # Adjust the region to capture the drawing area
+                screenshot = pyautogui.screenshot(region=(cx, cy, canvas_size, canvas_size))
+
+                # Converte a captura de tela em uma imagem OpenCV
+                user_drawing = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+                
+                # Convert the captured image to grayscale
+                user_drawing_gray = cv2.cvtColor(user_drawing, cv2.COLOR_BGR2GRAY)
+
+                # Convert the colored_canvas to grayscale
+                colored_canvas_color = cv2.cvtColor(colored_canvas, cv2.COLOR_GRAY2BGR)
+
+                # Ensure the dimensions match (resize if necessary)
+                user_drawing_gray = cv2.resize(user_drawing_gray, (user_drawing.shape[1], user_drawing.shape[0]))
+                print(user_drawing_gray.shape)
+                print(colored_canvas_color.shape)
+                # Threshold both images
+                _, user_binary = cv2.threshold(user_drawing_gray, 1, 255, cv2.THRESH_BINARY)
+                _, initial_binary = cv2.threshold(colored_canvas_color, 1, 255, cv2.THRESH_BINARY)
+
+                # Calculate pixel-wise difference
+                difference = cv2.bitwise_xor(user_binary, initial_binary)
+
+                # Accuracy %
+                total_pixels = initial_binary.size
+                differing_pixels = cv2.countNonZero(difference)
+                accuracy = 100 * (1 - differing_pixels / total_pixels)
+
+                print("Accuracy: {:.2f}%".format(accuracy))
+
+                """
+            #----------- READING INSTRUCTIONS AND DRAWING
+
+            # Reads key
+            k = cv2.waitKey(1) & 0xFF
+            key = str(chr(k)) 
+
+            # Safety measure if key is not pressed
+            if not key_press(key,drawing_canvas): 
+                break
+            
+            # If key pressed: 
+            if key == "p":                                      # Alternates between drawing mode
+                draw_mode = not draw_mode
+                (prev_cx,prev_cy) = (None,None)
+
+                if draw_mode:
+                    print(Fore.YELLOW+'Back to drawing...\n'+Style.RESET_ALL)
+                else: 
+                    print(Fore.YELLOW+'Drawing paused...\n'+Style.RESET_ALL)
+                
+            elif key == 'c':                                    # Clears canvas
+                draws = []
+                drawing_canvas.fill(255)
+                prev_cx,prev_cy = cx,cy
+                print(Fore.CYAN+'New canvas\n'+Style.RESET_ALL)
+
+            elif key == " ":                                    # Begins test
+                draw_mode= True
+                print(Fore.CYAN+'\n Drawing mode started! \n'+Style.RESET_ALL)
+
+            elif key == "m":                                    # Alternates between having or not mouse mode
+                umm= not umm
+                print('Mouse mode: '+Fore.CYAN+ str(umm)+Style.RESET_ALL+'\n')
+
+            elif key == "n":                                    # Alternates between having or not shake prevention mode
+                usp= not usp
+                print('Shake prevention mode: '+Fore.CYAN+ str(usp)+Style.RESET_ALL+'\n')
+
+            elif key == "l":                                    # Alternates between having or not canvas mode
+                ucm= not ucm
+                print('Camera as canvas mode: '+Fore.CYAN+ str(ucm)+Style.RESET_ALL+'\n')
+
+            elif key == 'c':                                                                # If 'c' pressed cleares canvas
+                draws = []
+                drawing_canvas.fill(255)
+                prev_cx,prev_cy = cx,cy
+                print(Fore.CYAN+'New canvas\n'+Style.RESET_ALL)
+                
+            # If drawing mode is active
+            if draw_mode :
+                if (cx,cy) != (None,None): # If coordenates are different to none type
+                    try:                  
+                            if usp and (prev_cx,prev_cy) != (None,None):                            # If use shake prevention mode
+                                diffX = abs(prev_cx - cx)
+                                diffY = abs(prev_cy - cy)
+
+                                if diffX>shake_limit or diffY>shake_limit:                          # If distance between points is bigger than shake limits, draws dot
+                                    draws.append(Shapes("dot",(0,0),(prev_cx,prev_cy),draw_color,pencil_thick))
+
+                                else:                                                               # Draws line if distance is acceptable
+                                    draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
+
+                            elif (prev_cx,prev_cy) != (None,None):                                  # Draws line
+                                    draws.append(Shapes("line",(prev_cx,prev_cy),(cx,cy),draw_color,pencil_thick))
 
                     except:
-                        prev_cx, prev_cy = cx,cy                                                # Except if coordenates don't change
+                            prev_cx, prev_cy = cx,cy                                                # Except if coordenates don't change
 
-                # Reads and saves previous points
-                if k == 0xFF:
-                    cX,cY = cx,cy
-                    prev_cx,prev_cy = cx,cy
+                    # Reads and saves previous points
+                    if k == 0xFF:
+                        
+                        prev_cx,prev_cy = cx,cy
 
-            # Calling shapes function        
-            shapesFunc(drawing_canvas,draws)
+                # Calling shapes function        
+                shapesFunc(drawing_canvas,draws)
+            
+            # Shows windows
+            cv2.imshow(camera_window,drawing_canvas)
+
+        capture.release()
         
-        # Shows windows
-        cv2.imshow(camera_window,drawing_canvas)
-
-    capture.release()
-    
 
 
 #--------- MAIN CODE  ---------#

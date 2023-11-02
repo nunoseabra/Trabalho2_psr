@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Shebang line
 
+# Universidade de Aveiro, ano letivo 2023/2024
 # Programação de Sistemas Robóticos
 # Trabalho nº2 - Augmented Reality Paint
 
@@ -13,11 +14,11 @@
 
 from asyncio import sleep
 import pprint
+from colorama import Fore, Style
 import cv2
 import json
 
-
-#--------- INITIALIZATION ---------#  
+#--------- INITIALIZATION ---------#
 
 # Initizalizes camera video capture
 cap = cv2.VideoCapture(0)
@@ -31,7 +32,8 @@ prev_maxb=0
 prev_maxg=0
 prev_maxr=0
 
-
+# Initializes counter
+i= 0
 
 #--------- FUNCTIONS ---------#
 
@@ -112,7 +114,8 @@ def selectPrint(color_data):
         print('Selected Threshold ' + str(max_g) + ' for limit Gmax')
     elif max_r != prev_maxr:
         print('Selected Threshold ' + str(max_r) + ' for limit Rmax')
-        
+
+
 # Function to update window
 def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
     # Updates previous trackbar value
@@ -145,12 +148,16 @@ def updatewin(color_data, hsv, frame, min_b, min_g, min_r, max_b, max_g, max_r):
 # Function to save color limits data in a JSON file
 def savefile(min_b, min_g, min_r, max_b, max_g, max_r):
 
-                            
-    limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 'G': {'min': min_g, 'max': max_g},'R': {'min': min_r, 'max': max_r}}}
+    # If a key is pressed, reads key
+    key = cv2.waitKey(1)
+
+    if key == ord('w'):                                 # If 'w' is pressed, gets limits dictionary
+        limits = {'limits': {'B': {'min': min_b, 'max': max_b}, 'G': {'min': min_g, 'max': max_g}, 'R': {'min': min_r, 'max': max_r}}}
         
-        # Save limits in a JSON file
-    with open('limits.json', 'w') as file:
-             json.dump(limits,file)
+        with open('limits.json', 'w') as file:          # Save limits in a JSON file
+            json.dump(limits,file)
+            print(Fore.CYAN+'Saved.....\n'+Style.RESET_ALL) 
+
 
 #--------- MAIN FUNCTION ---------#
 
@@ -159,17 +166,19 @@ def main():
     # Open window function
     openwin()
 
+    print('\nTo save your draw press '+ Fore.CYAN + 'w '+Style.RESET_ALL + '!\n')
+    print('To quit press '+ Fore.CYAN + 'q '+Style.RESET_ALL + '!\n')
+
     while True:
+        
         # If a frame is not captured the code breaks
         ret, frame = cap.read()
+        if not ret:
+          break
 
         # Calling trackbars
         color_data, hsv, min_b, min_g, min_r, max_b, max_g, max_r = trackbars(frame)
 
-        # If a frame is not captured the code breaks
-        if not ret:
-          break
-        
         # Comparing minimum values to previous minimum values
         #selectPrint(color_data) nao funciona
         
@@ -181,14 +190,11 @@ def main():
 
         # Visiualization function
         key=cv2.waitKey(1)
-        if key == ord('w'):            # when 'q' pressed quits program
+        if key == ord('q'):            # when 'q' pressed quits program
+            print(Fore.RED+'Interrupted.....\n'+ Style.RESET_ALL)
+            break
+        else:
             savefile(min_b, min_g, min_r, max_b, max_g, max_r)
-            print('\n Limits Saved.....\n ')
-            break
-        elif key == ord('c'): 
-            print('\n Interrupted.....\n ')
-            break
-        
 
 
 #--------- MAIN CODE  ---------#
