@@ -6,8 +6,8 @@
 # Trabalho nº2 - Augmented Reality Paint
 
 # Maria Rodrigues, nº 102384
-# Nuno Seabra, nº
-# Ricardo Baptista, nº
+# Nuno Seabra, nº 102889
+# Ricardo Baptista, nº 40170
 
 
 #--------- IMPORT FUNCTIONS ---------#
